@@ -1,11 +1,11 @@
 import { render } from '@create-figma-plugin/ui';
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import '!./output.css';
+import '!../css/output.css';
 
 import GitHubModal from './GitHubModal';
-import highlightCode from './highlightCode';
-import copyToClipboard from './copyToClipboard';
+import highlightCode from '../utils/highlightCode';
+import copyToClipboard from '../utils/copyToClipboard';
 
 function Plugin() {
   const [highlightedCode, setHighlightedCode] = useState('');
