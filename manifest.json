@@ -1,0 +1,14 @@
+{
+  "api": "1.0.0",
+  "editorType": [
+    "figma",
+    "dev"
+  ],
+  "id": "figma-variables-to-code",
+  "name": "Figma Variables to Code",
+  "main": "build/main.js",
+  "ui": "build/ui.js",
+  "capabilities": [
+    "inspect"
+  ]
+}
