@@ -1,0 +1,47 @@
+
+name: figma-variables-to-code
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'What branch?'
+        required: false
+        default: 'main'
+      dartCode:
+        description: 'Dart Code'
+        required: true
+        default: 'Updated figma_variables.dart from Figma'
+  push:
+    branches:
+      - "main"
+
+jobs:
+  build-unix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        node-version: [14.x]
+    steps:
+      - name: Inputs
+        id: input-messages
+        run: |
+          echo "BRANCH ---> '${{ github.event.inputs.branch }}'"
+          echo "CODE ---> '${{ github.event.inputs.dartCode }}'"
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v2
+
+      - name: Create Directory "design-tokens"
+        run: 'mkdir -p src/design-tokens'
+
+      - name: Create Dart File from request body
+        run: |
+          printf "${{ github.event.inputs.dartCode }}" > src/design-tokens/figma_variables.dart
+      # We now store the changes in the repository
+      - name: Persist changes in repository
+        uses: mikeal/publish-to-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.event.inputs.branch }}
