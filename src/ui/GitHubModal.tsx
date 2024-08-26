@@ -6,6 +6,13 @@ type GitHubModalProps = {
   highlightedCode: string;
 };
 
+type CommitBody = {
+  message: string;
+  content: string;
+  branch: string;
+  sha?: string;
+}
+
 export default function GitHubModal({ onClose, highlightedCode }: GitHubModalProps) {
   const [usernameField, setUsernameField] = useState('');
   const [tokenField, setTokenField] = useState('');
@@ -30,12 +37,13 @@ export default function GitHubModal({ onClose, highlightedCode }: GitHubModalPro
   }, []);
 
   const onPressSendToProvider = async () => {
-    const newBranch = `figma-variables-${Date.now()}`;
-
+    const newBranch = `chore/figma-variables-${Date.now()}`;
+  
     const createBranchUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/git/refs`;
     const mainBranch = `refs/heads/${branchField}`;
     const newBranchRef = `refs/heads/${newBranch}`;
-
+  
+    // Create a new branch
     const branchResponse = await fetch(createBranchUrl, {
       method: 'POST',
       headers: {
@@ -47,38 +55,60 @@ export default function GitHubModal({ onClose, highlightedCode }: GitHubModalPro
         sha: await getLatestCommitSha(usernameField, repositoryField, mainBranch, tokenField),
       }),
     });
-
+  
     if (!branchResponse.ok) {
       alert('Failed to create new branch.');
       return;
     }
-
+  
     const commitUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/contents/${filePathField}`;
-
+    
+    // Check if the file already exists and retrieve its sha if it does
+    let existingFileSha = '';
+    const fileResponse = await fetch(commitUrl, {
+      headers: {
+        Authorization: `token ${tokenField}`,
+      },
+    });
+  
+    if (fileResponse.ok) {
+      const fileData = await fileResponse.json();
+      existingFileSha = fileData.sha;
+    }
+  
     const parser = new DOMParser();
     const doc = parser.parseFromString(highlightedCode, 'text/html');
     const plainCode = doc.body.textContent || '';
-
+      
+    const commitBody: CommitBody = {
+      message: `Update ${filePathField} from Figma Variables`,
+      content: btoa(plainCode),
+      branch: newBranch,
+    };
+  
+    // Include sha in the commit if the file already exists
+    if (existingFileSha) {
+      commitBody['sha'] = existingFileSha;
+    }
+  
+    // Commit the code
     const commitResponse = await fetch(commitUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `token ${tokenField}`,
       },
-      body: JSON.stringify({
-        message: `Update figma_variables.dart with latest code`,
-        content: btoa(plainCode),
-        branch: newBranch,
-      }),
+      body: JSON.stringify(commitBody),
     });
-
+  
     if (!commitResponse.ok) {
       alert('Failed to commit code.');
       return;
     }
-
+  
+    // Create a pull request
     const pullRequestUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/pulls`;
-
+  
     const pullRequestResponse = await fetch(pullRequestUrl, {
       method: 'POST',
       headers: {
@@ -86,16 +116,17 @@ export default function GitHubModal({ onClose, highlightedCode }: GitHubModalPro
         Authorization: `token ${tokenField}`,
       },
       body: JSON.stringify({
-        title: 'Update figma_variables.dart',
+        title: `chore: Update ${filePathField}`,
         head: newBranch,
         base: branchField,
-        body: 'This pull request updates the figma_variables.dart file with the latest code.',
+        body: `This pull request updates ${filePathField} with the latest updates from Figma Variables.\n\nCreated automatically by figma-variables-to-code plugin.`,
       }),
     });
-
+  
     if (pullRequestResponse.ok) {
       alert('Pull request created successfully!');
-
+  
+      // Save settings after successful pull request creation
       parent.postMessage({
         pluginMessage: {
           type: 'saveSettings',
@@ -111,7 +142,7 @@ export default function GitHubModal({ onClose, highlightedCode }: GitHubModalPro
       alert(`Failed to create pull request: ${errorText}`);
     }
   };
-
+    
   async function getLatestCommitSha(user: string, repo: string, branchRef: string, token: string): Promise<string> {
     const url = `https://api.github.com/repos/${user}/${repo}/git/refs/heads/${branchRef.replace('refs/heads/', '')}`;
     const response = await fetch(url, {
@@ -128,7 +159,7 @@ export default function GitHubModal({ onClose, highlightedCode }: GitHubModalPro
       <div class="bg-gray-800 p-6 rounded-lg w-96">
         <h2 class="text-lg font-semibold mb-4">Sync with GitHub</h2>
         <div class="mb-4">
-          <label class="block mb-2">Username</label>
+          <label class="block mb-2">Username / Organization</label>
           <input
             type="text"
             class="w-full p-2 rounded bg-gray-700 text-white"
