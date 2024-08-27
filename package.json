@@ -25,11 +25,13 @@
     "capabilities": [
       "inspect"
     ],
+    "documentAccess": "dynamic-page",
     "editorType": [
       "figma","dev"
     ],
-    "id": "figma-variables-to-code",
+    "id": "1410237134114371338",
     "name": "Figma Variables to Code",
+    "networkAccess": { "allowedDomains": ["https://api.github.com"]},
     "main": "src/main.ts",
     "ui": "src/ui/Plugin.tsx"
   }
