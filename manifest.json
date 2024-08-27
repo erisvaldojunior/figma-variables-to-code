@@ -4,11 +4,17 @@
     "figma",
     "dev"
   ],
-  "id": "figma-variables-to-code",
+  "id": "1410237134114371338",
   "name": "Figma Variables to Code",
   "main": "build/main.js",
   "ui": "build/ui.js",
   "capabilities": [
     "inspect"
-  ]
+  ],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "https://api.github.com"
+    ]
+  }
 }
