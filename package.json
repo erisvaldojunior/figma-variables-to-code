@@ -15,10 +15,10 @@
   },
   "scripts": {
     "build": "npm run build:css && npm run build:js",
-    "build:css": "tailwindcss --input ./src/input.css --output ./src/output.css",
+    "build:css": "tailwindcss --input ./src/css/input.css --output ./src/css/output.css",
     "build:js": "build-figma-plugin --typecheck --minify",
     "watch": "npm run build:css && concurrently npm:watch:css npm:watch:js",
-    "watch:css": "tailwindcss --input ./src/input.css --output ./src/output.css --watch",
+    "watch:css": "tailwindcss --input ./src/css/input.css --output ./src/css/output.css --watch",
     "watch:js": "build-figma-plugin --typecheck --watch"
   },
   "figma-plugin": {
@@ -31,6 +31,6 @@
     "id": "figma-variables-to-code",
     "name": "Figma Variables to Code",
     "main": "src/main.ts",
-    "ui": "src/ui.tsx"
+    "ui": "src/ui/Plugin.tsx"
   }
 }
