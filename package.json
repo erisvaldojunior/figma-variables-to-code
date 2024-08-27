@@ -25,7 +25,6 @@
     "capabilities": [
       "inspect"
     ],
-    "documentAccess": "dynamic-page",
     "editorType": [
       "figma","dev"
     ],
