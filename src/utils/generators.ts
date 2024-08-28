@@ -145,12 +145,15 @@ function generateDartCodeForVariable(
 		figmaVariables
 	);
 	const resolvedType = variableObject.resolvedType;
+	let doubleKeyPlusSpace = '';
 	let value = valueContent;
 	if (resolvedType === 'STRING') {
 		value = toSingleQuotes(valueContent);
+	} else if (resolvedType === 'FLOAT') {
+		doubleKeyPlusSpace = 'double ';
 	}
 	let dartCode = '\n';
-	dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} _${dartKey} = ${value};\n`;
+	dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
 	dartCode += `  ${getDartType(resolvedType)} get ${dartKey} => _${dartKey};\n`;
 	return dartCode;
 }
@@ -236,7 +239,7 @@ function generateDartCodeForCollection(
 function getDartType(variableType: VariableResolvedDataType): string {
 	if (variableType === 'BOOLEAN') return 'bool';
 	if (variableType === 'COLOR') return 'Color';
-	if (variableType === 'FLOAT') return 'int';
+	if (variableType === 'FLOAT') return 'double';
 	if (variableType === 'STRING') return 'String';
 	throw new Error('Unknown variable type');
 }
