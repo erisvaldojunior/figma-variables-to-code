@@ -1,5 +1,5 @@
 import { showUI } from '@create-figma-plugin/utilities'
-import { generateDartCode } from './utils/generators';
+import { generateDartCode, generateInternalDartCode } from './utils/generators';
 
 export default function () {
   showUI({
@@ -8,8 +8,12 @@ export default function () {
   });
   /* Prepare variables for code generation */
   const dartFile = generateDartCode();
+  const dartInternalFile = generateInternalDartCode();
   /* Sends to the UI the code generation */
-  figma.ui.postMessage({ dartFile });
+  figma.ui.postMessage({ files: {
+    dartFile,
+    dartInternalFile
+  } });
   /* Catches event when code copied to clipboard and notify the user */
   figma.ui.onmessage = (message) => {
   	if (message.type === 'code-copied-dart') {
