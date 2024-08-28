@@ -26,7 +26,7 @@ export function generateDartCode(): string {
 	});
 	dartFile += '\n\n';
 	collections.forEach((collection) => {
-		dartFile += `${toPascalCase(collection.name)} get ${toCamelCase(collection.name)} => ${toPascalCase(collection.name)}();\n`;
+		dartFile += `final ${toCamelCase(collection.name)} = ${toPascalCase(collection.name)}();\n`;
 	});
 	return dartFile;
 }
