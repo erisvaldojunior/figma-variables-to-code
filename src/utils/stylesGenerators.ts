@@ -44,12 +44,16 @@ export function generateInternalStylesDartCode(): string {
   dartFile += `import 'figma_variables.dart';\n\n`;
 
   dartFile += `final class TextStyles {\n`;
+	dartFile += `  const TextStyles();\n`;
 
   const groupedTextStyles = groupTextStyles(textStyles);
   
   Object.keys(groupedTextStyles).forEach((groupName) => {
-    const groupClassName = toPascalCase(groupName);
-    dartFile += `  final ${toCamelCase(groupName)} = ${groupClassName}();\n`;
+    const groupNameCamelCase = toCamelCase(groupName);
+    const groupNamePascalCase = toPascalCase(groupName);
+    dartFile += `\n`;
+    dartFile += `  static final _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
+    dartFile += `  ${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
   });
 
   dartFile += `}\n`;
@@ -58,6 +62,7 @@ export function generateInternalStylesDartCode(): string {
     const groupClassName = toPascalCase(groupName);
     dartFile += `\n`;
     dartFile += `final class ${groupClassName} {\n`;
+    dartFile += `  const ${groupClassName}();\n`;
 
     groupedTextStyles[groupName].forEach((style) => {
       dartFile += generateTextStyleDartCode(style);
@@ -92,20 +97,25 @@ function groupTextStyles(textStyles: TextStyle[]): Record<string, TextStyle[]> {
  * @returns The generated Dart code as a string.
  */
 function generateTextStyleDartCode(style: TextStyle): string {
-  const styleName = toCamelCase(style.name.split('/').pop() || '');
+  const styleName = style.name.split('/').pop();
+  let dartCode = `\n`;
 
-  let dartCode = `  final ${styleName} = TextStyle(\n`;
+  if (styleName) {
+    const styleNameCamelCase = toCamelCase(styleName);
+    dartCode += `  static final _${styleNameCamelCase} = TextStyle(\n`;
 
-  dartCode += generateTextStyleProperty('fontFamily', style.boundVariables?.fontFamily, style.fontName.family);
-  dartCode += generateTextStyleProperty('fontSize', style.boundVariables?.fontSize, style.fontSize.toString());
-  dartCode += generateTextStyleProperty('fontWeight', style.boundVariables?.fontStyle, style.fontName.style);
-  
-  if (style.lineHeight.unit !== "AUTO") {
-    const heightFactor = style.lineHeight.value / style.fontSize;
-    dartCode += generateTextStyleProperty('height', style.boundVariables?.lineHeight, heightFactor.toString());
+    dartCode += generateTextStyleProperty('fontFamily', style.boundVariables?.fontFamily, style.fontName.family);
+    dartCode += generateTextStyleProperty('fontSize', style.boundVariables?.fontSize, style.fontSize.toString());
+    dartCode += generateTextStyleProperty('fontWeight', style.boundVariables?.fontStyle, style.fontName.style);
+    
+    if (style.lineHeight.unit !== "AUTO") {
+      const heightFactor = style.lineHeight.value / style.fontSize;
+      dartCode += generateTextStyleProperty('height', style.boundVariables?.lineHeight, heightFactor.toString());
+    }
+    
+    dartCode += `  );\n`;
+    dartCode += `  TextStyle get ${styleNameCamelCase} => _${styleNameCamelCase};\n`;  
   }
-  
-  dartCode += `  );\n`;
 
   return dartCode;
 }
