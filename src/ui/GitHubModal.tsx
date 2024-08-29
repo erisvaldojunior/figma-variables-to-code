@@ -5,6 +5,9 @@ type GitHubModalProps = {
   onClose: () => void;
   highlightedCode: string;
   highlightedInternalCode: string;
+  highlightedStylesCode: string;
+  highlightedStylesInternalCode: string;
+  highlightedUtilsCode: string;
 };
 
 type CommitBody = {
@@ -14,7 +17,14 @@ type CommitBody = {
   sha?: string;
 };
 
-export default function GitHubModal({ onClose, highlightedCode, highlightedInternalCode }: GitHubModalProps) {
+export default function GitHubModal({
+  onClose,
+  highlightedCode,
+  highlightedInternalCode,
+  highlightedStylesCode,
+  highlightedStylesInternalCode,
+  highlightedUtilsCode
+}: GitHubModalProps) {
   const [usernameField, setUsernameField] = useState('');
   const [tokenField, setTokenField] = useState('');
   const [repositoryField, setRepositoryField] = useState('');
@@ -62,16 +72,36 @@ export default function GitHubModal({ onClose, highlightedCode, highlightedInter
       return;
     }
 
+    // Paths for variable files
     const internalFilePath = `${folderPathField}figma_variables_internal.dart`;
     const interfaceFilePath = `${folderPathField}figma_variables.dart`;
 
-    // Commit the _internal.dart file first
-    const commitResult = await commitFileToGitHub(internalFilePath, highlightedInternalCode, newBranch);
-    if (!commitResult) return;
+    // Paths for style files
+    const internalStylesFilePath = `${folderPathField}figma_styles_internal.dart`;
+    const interfaceStylesFilePath = `${folderPathField}figma_styles.dart`;
 
-    // Commit the external .dart file
+    // Path for utils file
+    const utilsFilePath = `${folderPathField}figma_utils.dart`;
+
+    // Commit the figma_utils.dart file
+    const commitResultUtils = await commitFileToGitHub(utilsFilePath, highlightedUtilsCode, newBranch);
+    if (!commitResultUtils) return;
+
+    // Commit the figma_variables_internal.dart file
+    const commitResultInternal = await commitFileToGitHub(internalFilePath, highlightedInternalCode, newBranch);
+    if (!commitResultInternal) return;
+
+    // Commit the figma_variables.dart file
     const commitResultExternal = await commitFileToGitHub(interfaceFilePath, highlightedCode, newBranch);
     if (!commitResultExternal) return;
+
+    // Commit the figma_styles_internal.dart file
+    const commitResultInternalStyles = await commitFileToGitHub(internalStylesFilePath, highlightedStylesInternalCode, newBranch);
+    if (!commitResultInternalStyles) return;
+
+    // Commit the figma_styles.dart file
+    const commitResultExternalStyles = await commitFileToGitHub(interfaceStylesFilePath, highlightedStylesCode, newBranch);
+    if (!commitResultExternalStyles) return;
 
     // Create a pull request
     const pullRequestUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/pulls`;
@@ -83,10 +113,10 @@ export default function GitHubModal({ onClose, highlightedCode, highlightedInter
         Authorization: `token ${tokenField}`,
       },
       body: JSON.stringify({
-        title: `chore: Update Figma Variables`,
+        title: `chore: Update Figma Variables and Styles`,
         head: newBranch,
         base: branchField,
-        body: `This pull request updates the figma_variables.dart and figma_variables_internal.dart files with the latest updates from Figma Variables.\n\nCreated automatically by figma-variables-to-code plugin.`,
+        body: `This pull request updates the following files with the latest updates from Figma Variables and Styles:\n\n- figma_variables.dart\n- figma_variables_internal.dart\n- figma_styles.dart\n- figma_styles_internal.dart\n- figma_utils.dart\n\nCreated automatically by figma-variables-to-code plugin.`,
       }),
     });
 
@@ -101,8 +131,8 @@ export default function GitHubModal({ onClose, highlightedCode, highlightedInter
           token: tokenField,
           repo: repositoryField,
           branch: branchField,
-          folderPath: folderPathField
-        }
+          folderPath: folderPathField,
+        },
       }, '*');
     } else {
       const errorText = await pullRequestResponse.text();
@@ -131,7 +161,7 @@ export default function GitHubModal({ onClose, highlightedCode, highlightedInter
     const plainCode = doc.body.textContent || '';
 
     const commitBody: CommitBody = {
-      message: `Update ${filePath} from Figma Variables`,
+      message: `Update ${filePath} from Figma Variables and Styles`,
       content: btoa(plainCode),
       branch: branch,
     };
