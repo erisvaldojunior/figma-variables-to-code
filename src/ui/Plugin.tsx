@@ -10,26 +10,44 @@ import copyToClipboard from '../utils/copyToClipboard';
 function Plugin() {
   const [highlightedCode, setHighlightedCode] = useState('');
   const [highlightedInternalCode, setHighlightedInternalCode] = useState('');
+  const [highlightedStylesCode, setHighlightedStylesCode] = useState('');
+  const [highlightedStylesInternalCode, setHighlightedStylesInternalCode] = useState('');
+  const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
   const [showGitHubModal, setShowGitHubModal] = useState(false);
 
   useEffect(() => {
     onmessage = (event) => {
       const receivedFiles = event.data.pluginMessage.files;
-      highlightCode(receivedFiles.dartFile, setHighlightedCode); // Highlight and update the state with the received Dart code
-      highlightCode(receivedFiles.dartInternalFile, setHighlightedInternalCode); // Highlight and update the state with the received Dart code
+
+      if (receivedFiles.dartFile) {
+        highlightCode(receivedFiles.dartFile, setHighlightedCode);
+      }
+      if (receivedFiles.dartInternalFile) {
+        highlightCode(receivedFiles.dartInternalFile, setHighlightedInternalCode);
+      }
+      if (receivedFiles.stylesDartFile) {
+        highlightCode(receivedFiles.stylesDartFile, setHighlightedStylesCode);
+      }
+      if (receivedFiles.stylesInternalDartFile) {
+        highlightCode(receivedFiles.stylesInternalDartFile, setHighlightedStylesInternalCode);
+      }
+      if (receivedFiles.utilsDartFile) {
+        highlightCode(receivedFiles.utilsDartFile, setHighlightedUtilsCode);
+      }
     };
   }, []);
 
   return (
     <div class="p-4 bg-gray-900 text-white">
       <div class="flex justify-center">
-          <button
-            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
-            onClick={() => setShowGitHubModal(true)}
-          >
-            Sync with GitHub
-          </button>
-          </div>
+        <button
+          class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+          onClick={() => setShowGitHubModal(true)}
+        >
+          Sync with GitHub
+        </button>
+      </div>
+
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_variables.dart</h2>
         <div>
@@ -43,10 +61,42 @@ function Plugin() {
       </div>
       <pre
         class="p-4 rounded"
-        dangerouslySetInnerHTML={{ __html: highlightedCode }} // Render highlighted code
+        dangerouslySetInnerHTML={{ __html: highlightedCode }}
       ></pre>
 
 <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_styles.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedStylesCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedStylesCode }}
+      ></pre>
+
+<div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_utils.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedUtilsCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedUtilsCode }}
+      ></pre>
+
+      <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_variables_internal.dart</h2>
         <div>
           <button
@@ -59,10 +109,37 @@ function Plugin() {
       </div>
       <pre
         class="p-4 rounded"
-        dangerouslySetInnerHTML={{ __html: highlightedInternalCode }} // Render highlighted code
+        dangerouslySetInnerHTML={{ __html: highlightedInternalCode }}
       ></pre>
 
-      {showGitHubModal && <GitHubModal onClose={() => setShowGitHubModal(false)} highlightedCode={highlightedCode} highlightedInternalCode={highlightedInternalCode} />}
+
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_styles_internal.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedStylesInternalCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedStylesInternalCode }}
+      ></pre>
+
+
+      {showGitHubModal && (
+        <GitHubModal
+          highlightedCode={highlightedCode}
+          highlightedInternalCode={highlightedInternalCode}
+          highlightedStylesCode={highlightedStylesCode}
+          highlightedStylesInternalCode={highlightedStylesInternalCode}
+          highlightedUtilsCode={highlightedUtilsCode}
+          onClose={() => setShowGitHubModal(false)}
+        />
+      )}
     </div>
   );
 }

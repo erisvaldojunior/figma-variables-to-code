@@ -1,24 +1,41 @@
-import { showUI } from '@create-figma-plugin/utilities'
-import { generateDartCode, generateInternalDartCode } from './utils/generators';
+import { showUI } from '@create-figma-plugin/utilities';
+import { generateDartCode, generateInternalDartCode } from './utils/variablesGenerators';
+import { generateStylesDartCode, generateInternalStylesDartCode } from './utils/stylesGenerators';
+import { generateUtilsDartCode } from './utils/utilsGenerators';
 
 export default function () {
   showUI({
     height: 480,
-    width: 800
+    width: 800,
   });
+
   /* Prepare variables for code generation */
   const dartFile = generateDartCode();
   const dartInternalFile = generateInternalDartCode();
+  
+  /* Prepare styles for code generation */
+  const stylesDartFile = generateStylesDartCode();
+  const stylesInternalDartFile = generateInternalStylesDartCode();
+
+  /* Prepare utils for code generation */
+  const utilsDartFile = generateUtilsDartCode();
+  
   /* Sends to the UI the code generation */
-  figma.ui.postMessage({ files: {
-    dartFile,
-    dartInternalFile
-  } });
+  figma.ui.postMessage({
+    files: {
+      dartFile,
+      dartInternalFile,
+      stylesDartFile,
+      stylesInternalDartFile,
+      utilsDartFile
+    },
+  });
+
   /* Catches event when code copied to clipboard and notify the user */
   figma.ui.onmessage = (message) => {
-  	if (message.type === 'code-copied-dart') {
-	  	figma.notify('Dart code successfully copied to clipboard');
-	  } else if (message.type === 'saveSettings') {
+    if (message.type === 'code-copied-dart') {
+      figma.notify('Dart code successfully copied to clipboard');
+    } else if (message.type === 'saveSettings') {
       // Save settings to clientStorage
       figma.clientStorage.setAsync('githubUsername', message.username);
       figma.clientStorage.setAsync('githubToken', message.token);
@@ -44,7 +61,6 @@ async function loadSettings() {
     token,
     repo,
     branch,
-    filePath
+    filePath,
   });
-
 }
