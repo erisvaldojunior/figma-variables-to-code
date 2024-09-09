@@ -231,6 +231,15 @@ export default function GitHubModal({
           />
         </div>
         <div class="mb-4">
+          <label class="block mb-2">Default Branch</label>
+          <input
+            type="text"
+            class="w-full p-2 rounded bg-gray-700 text-white"
+            value={branchField}
+            onChange={(e) => setBranchField((e.target as HTMLInputElement).value)}
+          />
+        </div>
+        <div class="mb-4">
           <label class="block mb-2">Folder Path</label>
           <input
             type="text"
