@@ -127,7 +127,7 @@ function generateDartKeyString(variable: Variable): string {
 		const part = parts[i].trim();
 		const capitalizedPart =
 			(i > 0 ? part.charAt(0).toUpperCase() : part.charAt(0)) + part.slice(1);
-		transformedGroupPath += toPascalCase(capitalizedPart);
+		transformedGroupPath += collectionName + toPascalCase(capitalizedPart);
 	}
 	const fullPath =
 		groupPath.length > 0
@@ -223,7 +223,7 @@ function generateDartCodeForCollection(
 			});
 		} else {
 			const groupNameCamelCase = toCamelCase(groupName);
-			const groupNamePascalCase = toPascalCase(groupName);
+			const groupNamePascalCase = collectionName + toPascalCase(groupName);
 			dartCode += '\n';
 			dartCode += `  static final _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
 			dartCode += `  ${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
@@ -234,9 +234,10 @@ function generateDartCodeForCollection(
 	// Generate separate classes for each group outside the parent class
 	Object.keys(groupedVariables).forEach((groupName) => {
 		if (groupName !== '__root__') {
+			const groupNamePascalCase = collectionName + toPascalCase(groupName);
 			dartCode += '\n';
-			dartCode += `final class ${toPascalCase(groupName)} {\n`;
-			dartCode += `  const ${toPascalCase(groupName)}();\n`;
+			dartCode += `final class ${groupNamePascalCase} {\n`;
+			dartCode += `  const ${groupNamePascalCase}();\n`;
 			groupedVariables[groupName].forEach((variable) => {
 				dartCode += generateDartCodeForVariable(variable, figmaVariables);
 			});

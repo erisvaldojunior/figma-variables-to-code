@@ -159,7 +159,15 @@ function generateTextStyleProperty(
       return `    ${propertyName}: ${value},\n`;
     }
   }
-  const value = propertyName === 'fontWeight' ? `getFontWeight(${fallbackValue})` : fallbackValue;
+  let value;
+  if (propertyName === 'fontFamily') {
+    value = `'${fallbackValue}'`;
+  } else if (propertyName === 'fontWeight') {
+    value = `getFontWeight('${fallbackValue}')`;
+  } else {
+    // fontSize or height
+    value = fallbackValue;
+  }
   return `    ${propertyName}: ${value},\n`;
 }
 
