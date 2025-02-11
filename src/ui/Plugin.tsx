@@ -14,6 +14,7 @@ function Plugin() {
   const [highlightedStylesInternalCode, setHighlightedStylesInternalCode] = useState('');
   const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
   const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [modesCodes, setModesCodes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     onmessage = (event) => {
@@ -33,6 +34,17 @@ function Plugin() {
       }
       if (receivedFiles.utilsDartFile) {
         highlightCode(receivedFiles.utilsDartFile, setHighlightedUtilsCode);
+      }
+      
+      // Handle modes codes
+      if (receivedFiles.modesCodes) {
+        const newModesCodes: Record<string, string> = {};
+        Object.entries(receivedFiles.modesCodes).forEach(([modeName, code]) => {
+          highlightCode(code as string, (highlighted) => {
+            newModesCodes[modeName] = highlighted;
+          });
+        });
+        setModesCodes(newModesCodes);
       }
     };
   }, []);
@@ -129,6 +141,28 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedStylesInternalCode }}
       ></pre>
 
+      {/* Render each mode's code block */}
+      {Object.entries(modesCodes).map(([modeName, code]) => (
+        <div key={modeName}>
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+              figma_variables_{modeName}.dart
+            </h2>
+            <div>
+              <button
+                class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+                onClick={() => copyToClipboard(code)}
+              >
+                Copy to Clipboard
+              </button>
+            </div>
+          </div>
+          <pre
+            class="p-4 rounded"
+            dangerouslySetInnerHTML={{ __html: code }}
+          ></pre>
+        </div>
+      ))}
 
       {showGitHubModal && (
         <GitHubModal
@@ -137,6 +171,7 @@ function Plugin() {
           highlightedStylesCode={highlightedStylesCode}
           highlightedStylesInternalCode={highlightedStylesInternalCode}
           highlightedUtilsCode={highlightedUtilsCode}
+          modesCodes={modesCodes}
           onClose={() => setShowGitHubModal(false)}
         />
       )}

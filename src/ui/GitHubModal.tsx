@@ -8,6 +8,7 @@ type GitHubModalProps = {
   highlightedStylesCode: string;
   highlightedStylesInternalCode: string;
   highlightedUtilsCode: string;
+  modesCodes: Record<string, string>;
 };
 
 type CommitBody = {
@@ -23,7 +24,8 @@ export default function GitHubModal({
   highlightedInternalCode,
   highlightedStylesCode,
   highlightedStylesInternalCode,
-  highlightedUtilsCode
+  highlightedUtilsCode,
+  modesCodes
 }: GitHubModalProps) {
   const [usernameField, setUsernameField] = useState('');
   const [tokenField, setTokenField] = useState('');
@@ -102,6 +104,13 @@ export default function GitHubModal({
     // Commit the figma_styles.dart file
     const commitResultExternalStyles = await commitFileToGitHub(interfaceStylesFilePath, highlightedStylesCode, newBranch);
     if (!commitResultExternalStyles) return;
+
+    // Commit each mode's file
+    for (const [modeName, code] of Object.entries(modesCodes)) {
+      const modeFilePath = `${folderPathField}figma_variables_${modeName}.dart`;
+      const commitResultMode = await commitFileToGitHub(modeFilePath, code, newBranch);
+      if (!commitResultMode) return;
+    }
 
     // Create a pull request
     const pullRequestUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/pulls`;

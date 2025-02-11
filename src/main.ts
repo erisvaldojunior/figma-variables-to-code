@@ -1,5 +1,5 @@
 import { showUI } from '@create-figma-plugin/utilities';
-import { generateDartCode, generateInternalDartCode } from './utils/variablesGenerators';
+import { generateDartCode, generateModeDartCodes } from './utils/variablesGenerators';
 import { generateStylesDartCode, generateInternalStylesDartCode } from './utils/stylesGenerators';
 import { generateUtilsDartCode } from './utils/utilsGenerators';
 
@@ -11,7 +11,7 @@ export default function () {
 
   /* Prepare variables for code generation */
   const dartFile = generateDartCode();
-  const dartInternalFile = generateInternalDartCode();
+  const modesCodes = generateModeDartCodes();
   
   /* Prepare styles for code generation */
   const stylesDartFile = generateStylesDartCode();
@@ -24,7 +24,7 @@ export default function () {
   figma.ui.postMessage({
     files: {
       dartFile,
-      dartInternalFile,
+      modesCodes,
       stylesDartFile,
       stylesInternalDartFile,
       utilsDartFile
