@@ -1,5 +1,5 @@
 import { rgbaObjectToDartHexaString } from './converters';
-import { toCamelCase, toPascalCase, toSingleQuotes } from './string';
+import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
 
 type VariableValueType = {
@@ -15,52 +15,75 @@ export function generateDartCode(): string {
 	const collections = figma.variables.getLocalVariableCollections();
 	let dartFile = generateHeaderComment();
 	
-	// Import all modes
-	dartFile += `import 'figma_variables_default.dart'\n`;
-	collections.forEach((collection) => {
-		const modes = collection.modes;
-		modes.forEach((mode) => {
-			if (mode.modeId !== collection.defaultModeId) {
-				const modeName = formatModeNameForFile(mode.name);
-				dartFile += `import 'figma_variables_${modeName}.dart'\n`;
-			}
-		});
-	});
+	// Get all modes and sort them alphabetically by their file names
+	const uniqueModes = getUniqueModes(collections);
+	const sortedImports = [
+		...uniqueModes.map(mode => ({
+			name: formatModeNameForFile(mode.name),
+			alias: `${formatModeNameForFile(mode.name)}_mode`
+		})),
+		{ name: 'default', alias: 'default_mode' }  // Add default mode to the list
+	].sort((a, b) => a.name.localeCompare(b.name));  // Sort everything alphabetically
 	
-	dartFile += `    show `;
+	// Generate imports in alphabetical order
+	sortedImports.forEach(({ name, alias }) => {
+		dartFile += `import 'figma_variables_${name}.dart' as ${alias};\n`;
+	});
+	dartFile += '\n';
+	
+	// Expose default mode directly
+	collections.forEach((collection) => {
+		const name = toCamelCase(collection.name);
+		const className = toPascalCase(collection.name);
+		dartFile += `final ${name} = default_mode.${className}();\n`;
+	});
+	dartFile += '\n';
+	
+	// Create typed wrapper class
+	dartFile += '// Create typed wrapper for other modes\n';
+	dartFile += 'class ModeWrapper<';
 	collections.forEach((collection, index) => {
-		const name = toPascalCase(collection.name);
-		dartFile += `${name}${index === collections.length - 1 ? ';' : ', '}`;
+		const className = toPascalCase(collection.name);
+		dartFile += `${className}${index === collections.length - 1 ? '>' : ', '}`;
 	});
-	dartFile += '\n\n';
+	dartFile += ' {\n\n';
 	
-	// Generate default mode variables
+	dartFile += '  const ModeWrapper({\n';
 	collections.forEach((collection) => {
-		dartFile += `final ${toCamelCase(collection.name)} = ${toPascalCase(collection.name)}();\n`;
+		const name = toCamelCase(collection.name);
+		dartFile += `    required this.${name},\n`;
 	});
+	dartFile += '  });\n';
 	
-	// Generate other modes variables
 	collections.forEach((collection) => {
-		const modes = collection.modes;
-		modes.forEach((mode) => {
-			if (mode.modeId !== collection.defaultModeId) {
-				const modeName = formatModeNameForFile(mode.name);
-				dartFile += `final ${toCamelCase(modeName)} = ${toPascalCase(modeName)}();\n`;
-			}
+		const name = toCamelCase(collection.name);
+		const className = toPascalCase(collection.name);
+		dartFile += `  final ${className} ${name};\n`;
+	});
+	dartFile += '}\n\n';
+	
+	// Create instances for each mode
+	uniqueModes.forEach((mode, index) => {
+		const modeName = formatModeNameForFile(mode.name);
+		const modeVarName = formatModeNameForVariable(mode.name) + 'Mode';
+		
+		dartFile += `final ${modeVarName} = ModeWrapper<\n`;
+		collections.forEach((collection, index) => {
+			const className = toPascalCase(collection.name);
+			dartFile += `    ${modeName}_mode.${className}${index === collections.length - 1 ? '>' : ',\n'}`;
 		});
+		dartFile += '(\n';
+		
+		collections.forEach((collection) => {
+			const name = toCamelCase(collection.name);
+			const className = toPascalCase(collection.name);
+			dartFile += `  ${name}: ${modeName}_mode.${className}(),\n`;
+		});
+		// Add single newline if it's not the last mode
+		dartFile += `);\n${index < uniqueModes.length - 1 ? '\n' : ''}`;
 	});
 	
 	return dartFile;
-}
-
-/**
- * Formats mode name to be used in file names
- */
-function formatModeNameForFile(modeName: string): string {
-	return modeName.toLowerCase()
-		.replace(/[^a-z0-9]/g, '_')
-		.replace(/_+/g, '_')
-		.replace(/^_|_$/g, '');
 }
 
 /**
@@ -119,7 +142,7 @@ function generateDartCodeForMode(
 		}
 	});
 	
-	return dartFile;
+	return dartFile + '\n';
 }
 
 /*
@@ -367,4 +390,21 @@ function isVariableAlias(value: any): value is VariableAlias {
 	return (
 		value && value.type === 'VARIABLE_ALIAS' && typeof value.id === 'string'
 	);
+}
+
+/**
+ * Gets unique modes from all collections
+ */
+function getUniqueModes(collections: VariableCollection[]): { modeId: string, name: string }[] {
+	const modesMap = new Map<string, { modeId: string, name: string }>();
+	
+	collections.forEach(collection => {
+		collection.modes.forEach(mode => {
+			if (mode.modeId !== collection.defaultModeId) {
+				modesMap.set(mode.modeId, { modeId: mode.modeId, name: mode.name });
+			}
+		});
+	});
+	
+	return Array.from(modesMap.values());
 }

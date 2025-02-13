@@ -4,7 +4,6 @@ import { useState, useEffect } from 'preact/hooks';
 type GitHubModalProps = {
   onClose: () => void;
   highlightedCode: string;
-  highlightedInternalCode: string;
   highlightedStylesCode: string;
   highlightedStylesInternalCode: string;
   highlightedUtilsCode: string;
@@ -21,7 +20,6 @@ type CommitBody = {
 export default function GitHubModal({
   onClose,
   highlightedCode,
-  highlightedInternalCode,
   highlightedStylesCode,
   highlightedStylesInternalCode,
   highlightedUtilsCode,
@@ -89,10 +87,6 @@ export default function GitHubModal({
     const commitResultUtils = await commitFileToGitHub(utilsFilePath, highlightedUtilsCode, newBranch);
     if (!commitResultUtils) return;
 
-    // Commit the figma_variables_internal.dart file
-    const commitResultInternal = await commitFileToGitHub(internalFilePath, highlightedInternalCode, newBranch);
-    if (!commitResultInternal) return;
-
     // Commit the figma_variables.dart file
     const commitResultExternal = await commitFileToGitHub(interfaceFilePath, highlightedCode, newBranch);
     if (!commitResultExternal) return;
@@ -125,7 +119,19 @@ export default function GitHubModal({
         title: `chore: Update Figma Variables and Styles`,
         head: newBranch,
         base: branchField,
-        body: `This pull request updates the following files with the latest updates from Figma Variables and Styles:\n\n- figma_variables.dart\n- figma_variables_internal.dart\n- figma_styles.dart\n- figma_styles_internal.dart\n- figma_utils.dart\n\nCreated automatically by figma-variables-to-code plugin.`,
+        body: `This pull request updates the following files with the latest updates from Figma Variables and Styles:
+
+- figma_variables.dart (main interface)
+- figma_variables_default.dart (default mode)
+${Object.keys(modesCodes)
+  .filter(mode => mode !== 'default')
+  .map(mode => `- figma_variables_${mode}.dart (${mode} mode)`)
+  .join('\n')}
+- figma_styles.dart
+- figma_styles_internal.dart
+- figma_utils.dart
+
+Created automatically by figma-variables-to-code plugin.`,
       }),
     });
 

@@ -2,7 +2,7 @@
 export default function copyToClipboard(highlightedCode: string) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(highlightedCode, 'text/html');
-    const plainCode = doc.body.textContent || '';
+    const plainCode = (doc.body.textContent || '');
     
     const tempTextarea = document.createElement('textarea');
     tempTextarea.value = plainCode;
@@ -15,4 +15,4 @@ export default function copyToClipboard(highlightedCode: string) {
       { eventName: 'code-copied-dart', pluginMessage: { type: 'code-copied-dart' } },
       '*'
     );
-  }
+}

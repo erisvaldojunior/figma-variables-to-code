@@ -9,7 +9,6 @@ import copyToClipboard from '../utils/copyToClipboard';
 
 function Plugin() {
   const [highlightedCode, setHighlightedCode] = useState('');
-  const [highlightedInternalCode, setHighlightedInternalCode] = useState('');
   const [highlightedStylesCode, setHighlightedStylesCode] = useState('');
   const [highlightedStylesInternalCode, setHighlightedStylesInternalCode] = useState('');
   const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
@@ -22,9 +21,6 @@ function Plugin() {
 
       if (receivedFiles.dartFile) {
         highlightCode(receivedFiles.dartFile, setHighlightedCode);
-      }
-      if (receivedFiles.dartInternalFile) {
-        highlightCode(receivedFiles.dartInternalFile, setHighlightedInternalCode);
       }
       if (receivedFiles.stylesDartFile) {
         highlightCode(receivedFiles.stylesDartFile, setHighlightedStylesCode);
@@ -109,23 +105,6 @@ function Plugin() {
       ></pre>
 
       <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold">figma_variables_internal.dart</h2>
-        <div>
-          <button
-            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
-            onClick={() => copyToClipboard(highlightedInternalCode)}
-          >
-            Copy to Clipboard
-          </button>
-        </div>
-      </div>
-      <pre
-        class="p-4 rounded"
-        dangerouslySetInnerHTML={{ __html: highlightedInternalCode }}
-      ></pre>
-
-
-      <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_styles_internal.dart</h2>
         <div>
           <button
@@ -167,7 +146,6 @@ function Plugin() {
       {showGitHubModal && (
         <GitHubModal
           highlightedCode={highlightedCode}
-          highlightedInternalCode={highlightedInternalCode}
           highlightedStylesCode={highlightedStylesCode}
           highlightedStylesInternalCode={highlightedStylesInternalCode}
           highlightedUtilsCode={highlightedUtilsCode}
