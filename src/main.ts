@@ -1,7 +1,7 @@
 import { showUI } from '@create-figma-plugin/utilities';
-import { generateDartCode, generateModeDartCodes } from './utils/variablesGenerators';
-import { generateStylesDartCode, generateInternalStylesDartCode } from './utils/stylesGenerators';
-import { generateUtilsDartCode } from './utils/utilsGenerators';
+import { generateVariablesFile, generateVariablesModesFiles } from './utils/variablesGenerators';
+import { generateStylesFile, generateInternalStylesDartCode } from './utils/stylesGenerators';
+import { generateUtilsFile } from './utils/utilsGenerators';
 
 export default function () {
   showUI({
@@ -10,24 +10,24 @@ export default function () {
   });
 
   /* Prepare variables for code generation */
-  const dartFile = generateDartCode();
-  const modesCodes = generateModeDartCodes();
+  const variablesFile = generateVariablesFile();
+  const variablesModesFiles = generateVariablesModesFiles();
   
   /* Prepare styles for code generation */
-  const stylesDartFile = generateStylesDartCode();
+  const stylesFile = generateStylesFile();
   const stylesInternalDartFile = generateInternalStylesDartCode();
 
   /* Prepare utils for code generation */
-  const utilsDartFile = generateUtilsDartCode();
+  const utilsFile = generateUtilsFile();
   
   /* Sends to the UI the code generation */
   figma.ui.postMessage({
     files: {
-      dartFile,
-      modesCodes,
-      stylesDartFile,
+      variablesFile,
+      variablesModesFiles,
+      stylesFile,
       stylesInternalDartFile,
-      utilsDartFile
+      utilsFile
     },
   });
 

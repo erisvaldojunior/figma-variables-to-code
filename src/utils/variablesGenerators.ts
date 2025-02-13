@@ -9,10 +9,10 @@ type VariableValueType = {
 };
 
 /**
- * Generates the complete Dart code from Figma Variables.
+ * Generates figma_variables.dart file.
  * @returns The generated Dart code (entire file).
  */
-export function generateDartCode(): string {
+export function generateVariablesFile(): string {
 	const collections = figma.variables.getLocalVariableCollections();
 	let dartFile = generateHeaderComment();
 	
@@ -87,10 +87,10 @@ export function generateDartCode(): string {
 }
 
 /**
- * Generates the Dart code for each mode from Figma Variables.
- * @returns An object containing the generated Dart code for each mode.
+ * Generates the Dart file for each mode from Figma Variables.
+ * @returns An object containing the generated Dart file for each mode.
  */
-export function generateModeDartCodes(): Record<string, string> {
+export function generateVariablesModesFiles(): Record<string, string> {
 	const collections = figma.variables.getLocalVariableCollections();
 	const variables = figma.variables.getLocalVariables();
 	const modeCodes: Record<string, string> = {};

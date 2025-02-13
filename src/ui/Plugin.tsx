@@ -19,23 +19,23 @@ function Plugin() {
     onmessage = (event) => {
       const receivedFiles = event.data.pluginMessage.files;
 
-      if (receivedFiles.dartFile) {
-        highlightCode(receivedFiles.dartFile, setHighlightedCode);
+      if (receivedFiles.variablesFile) {
+        highlightCode(receivedFiles.variablesFile, setHighlightedCode);
       }
-      if (receivedFiles.stylesDartFile) {
-        highlightCode(receivedFiles.stylesDartFile, setHighlightedStylesCode);
+      if (receivedFiles.stylesFile) {
+        highlightCode(receivedFiles.stylesFile, setHighlightedStylesCode);
       }
       if (receivedFiles.stylesInternalDartFile) {
         highlightCode(receivedFiles.stylesInternalDartFile, setHighlightedStylesInternalCode);
       }
-      if (receivedFiles.utilsDartFile) {
-        highlightCode(receivedFiles.utilsDartFile, setHighlightedUtilsCode);
+      if (receivedFiles.utilsFile) {
+        highlightCode(receivedFiles.utilsFile, setHighlightedUtilsCode);
       }
       
       // Handle modes codes
-      if (receivedFiles.modesCodes) {
+      if (receivedFiles.variablesModesFiles) {
         const newModesCodes: Record<string, string> = {};
-        Object.entries(receivedFiles.modesCodes).forEach(([modeName, code]) => {
+        Object.entries(receivedFiles.variablesModesFiles).forEach(([modeName, code]) => {
           highlightCode(code as string, (highlighted) => {
             newModesCodes[modeName] = highlighted;
           });

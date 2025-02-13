@@ -16,10 +16,10 @@ type TextStyle = {
 } & globalThis.TextStyle;
 
 /**
- * Generates the Dart code for `figma_styles.dart`.
- * @returns The generated Dart code as a string.
+ * Generates the Dart file `figma_styles.dart`.
+ * @returns The generated Dart file as a string.
  */
-export function generateStylesDartCode(): string {
+export function generateStylesFile(): string {
   const textStyles: TextStyle[] = figma.getLocalTextStyles();
   let dartFile = generateHeaderComment();
   dartFile += `import 'figma_styles_internal.dart' show TextStyles;\n\n`;  
