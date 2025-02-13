@@ -1,3 +1,4 @@
+import { formatLine } from './dartFormat';
 import { rgbaObjectToDartHexaString } from './converters';
 import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
@@ -41,13 +42,12 @@ export function generateDartCode(): string {
 	
 	// Create typed wrapper class
 	dartFile += '// Create typed wrapper for other modes\n';
-	dartFile += 'class ModeWrapper<';
+	let modeWrapperLine = 'class ModeWrapper<';
 	collections.forEach((collection, index) => {
 		const className = toPascalCase(collection.name);
-		dartFile += `${className}${index === collections.length - 1 ? '>' : ', '}`;
+		modeWrapperLine += `${className}${index === collections.length - 1 ? '>' : ', '}`;
 	});
-	dartFile += ' {\n\n';
-	
+	dartFile += formatLine(modeWrapperLine, 4) + ' {\n';
 	dartFile += '  const ModeWrapper({\n';
 	collections.forEach((collection) => {
 		const name = toCamelCase(collection.name);
