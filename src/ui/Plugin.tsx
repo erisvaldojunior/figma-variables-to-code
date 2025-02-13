@@ -10,10 +10,10 @@ import copyToClipboard from '../utils/copyToClipboard';
 function Plugin() {
   const [highlightedCode, setHighlightedCode] = useState('');
   const [highlightedStylesCode, setHighlightedStylesCode] = useState('');
-  const [highlightedStylesInternalCode, setHighlightedStylesInternalCode] = useState('');
   const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
   const [showGitHubModal, setShowGitHubModal] = useState(false);
-  const [modesCodes, setModesCodes] = useState<Record<string, string>>({});
+  const [stylesModesCodes, setStylesModesCodes] = useState<Record<string, string>>({});
+  const [variablesModesCodes, setVariablesModesCodes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     onmessage = (event) => {
@@ -25,14 +25,11 @@ function Plugin() {
       if (receivedFiles.stylesFile) {
         highlightCode(receivedFiles.stylesFile, setHighlightedStylesCode);
       }
-      if (receivedFiles.stylesInternalDartFile) {
-        highlightCode(receivedFiles.stylesInternalDartFile, setHighlightedStylesInternalCode);
-      }
       if (receivedFiles.utilsFile) {
         highlightCode(receivedFiles.utilsFile, setHighlightedUtilsCode);
       }
       
-      // Handle modes codes
+      // Handle variables modes files
       if (receivedFiles.variablesModesFiles) {
         const newModesCodes: Record<string, string> = {};
         Object.entries(receivedFiles.variablesModesFiles).forEach(([modeName, code]) => {
@@ -40,8 +37,20 @@ function Plugin() {
             newModesCodes[modeName] = highlighted;
           });
         });
-        setModesCodes(newModesCodes);
+        setVariablesModesCodes(newModesCodes);
       }
+
+      // Handle styles modes files
+      if (receivedFiles.stylesModesFiles) {
+        const newModesCodes: Record<string, string> = {};
+        Object.entries(receivedFiles.stylesModesFiles).forEach(([modeName, code]) => {
+          highlightCode(code as string, (highlighted) => {
+            newModesCodes[modeName] = highlighted;
+          });
+        });
+        setStylesModesCodes(newModesCodes);
+      }
+
     };
   }, []);
 
@@ -72,7 +81,7 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedCode }}
       ></pre>
 
-<div class="flex justify-between items-center">
+      <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_styles.dart</h2>
         <div>
           <button
@@ -88,7 +97,7 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedStylesCode }}
       ></pre>
 
-<div class="flex justify-between items-center">
+      <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_utils.dart</h2>
         <div>
           <button
@@ -104,24 +113,8 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedUtilsCode }}
       ></pre>
 
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold">figma_styles_internal.dart</h2>
-        <div>
-          <button
-            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
-            onClick={() => copyToClipboard(highlightedStylesInternalCode)}
-          >
-            Copy to Clipboard
-          </button>
-        </div>
-      </div>
-      <pre
-        class="p-4 rounded"
-        dangerouslySetInnerHTML={{ __html: highlightedStylesInternalCode }}
-      ></pre>
-
-      {/* Render each mode's code block */}
-      {Object.entries(modesCodes).map(([modeName, code]) => (
+      {/* Render each variable mode code block */}
+      {Object.entries(variablesModesCodes).map(([modeName, code]) => (
         <div key={modeName}>
           <div class="flex justify-between items-center">
             <h2 class="text-lg font-semibold">
@@ -143,13 +136,36 @@ function Plugin() {
         </div>
       ))}
 
+      {/* Render each style mode code block */}
+      {Object.entries(stylesModesCodes).map(([modeName, code]) => (
+        <div key={modeName}>
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold">
+              figma_styles_{modeName}.dart
+            </h2>
+            <div>
+              <button
+                class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+                onClick={() => copyToClipboard(code)}
+              >
+                Copy to Clipboard
+              </button>
+            </div>
+          </div>
+          <pre
+            class="p-4 rounded"
+            dangerouslySetInnerHTML={{ __html: code }}
+          ></pre>
+        </div>
+      ))}
+
       {showGitHubModal && (
         <GitHubModal
           highlightedCode={highlightedCode}
           highlightedStylesCode={highlightedStylesCode}
-          highlightedStylesInternalCode={highlightedStylesInternalCode}
           highlightedUtilsCode={highlightedUtilsCode}
-          modesCodes={modesCodes}
+          stylesModesCodes={stylesModesCodes}
+          variablesModesCodes={variablesModesCodes}
           onClose={() => setShowGitHubModal(false)}
         />
       )}

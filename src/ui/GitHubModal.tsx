@@ -5,9 +5,9 @@ type GitHubModalProps = {
   onClose: () => void;
   highlightedCode: string;
   highlightedStylesCode: string;
-  highlightedStylesInternalCode: string;
   highlightedUtilsCode: string;
-  modesCodes: Record<string, string>;
+  stylesModesCodes: Record<string, string>;
+  variablesModesCodes: Record<string, string>;
 };
 
 type CommitBody = {
@@ -21,9 +21,9 @@ export default function GitHubModal({
   onClose,
   highlightedCode,
   highlightedStylesCode,
-  highlightedStylesInternalCode,
   highlightedUtilsCode,
-  modesCodes
+  stylesModesCodes,
+  variablesModesCodes
 }: GitHubModalProps) {
   const [usernameField, setUsernameField] = useState('');
   const [tokenField, setTokenField] = useState('');
@@ -72,35 +72,31 @@ export default function GitHubModal({
       return;
     }
 
-    // Paths for variable files
-    const internalFilePath = `${folderPathField}figma_variables_internal.dart`;
-    const interfaceFilePath = `${folderPathField}figma_variables.dart`;
-
-    // Paths for style files
-    const internalStylesFilePath = `${folderPathField}figma_styles_internal.dart`;
-    const interfaceStylesFilePath = `${folderPathField}figma_styles.dart`;
-
-    // Path for utils file
+    const stylesFilePath = `${folderPathField}figma_styles.dart`;
     const utilsFilePath = `${folderPathField}figma_utils.dart`;
+    const variablesFilePath = `${folderPathField}figma_variables.dart`;
 
     // Commit the figma_utils.dart file
     const commitResultUtils = await commitFileToGitHub(utilsFilePath, highlightedUtilsCode, newBranch);
     if (!commitResultUtils) return;
 
     // Commit the figma_variables.dart file
-    const commitResultExternal = await commitFileToGitHub(interfaceFilePath, highlightedCode, newBranch);
+    const commitResultExternal = await commitFileToGitHub(variablesFilePath, highlightedCode, newBranch);
     if (!commitResultExternal) return;
 
-    // Commit the figma_styles_internal.dart file
-    const commitResultInternalStyles = await commitFileToGitHub(internalStylesFilePath, highlightedStylesInternalCode, newBranch);
-    if (!commitResultInternalStyles) return;
-
     // Commit the figma_styles.dart file
-    const commitResultExternalStyles = await commitFileToGitHub(interfaceStylesFilePath, highlightedStylesCode, newBranch);
+    const commitResultExternalStyles = await commitFileToGitHub(stylesFilePath, highlightedStylesCode, newBranch);
     if (!commitResultExternalStyles) return;
 
-    // Commit each mode's file
-    for (const [modeName, code] of Object.entries(modesCodes)) {
+    // Commit each style mode file
+    for (const [modeName, code] of Object.entries(stylesModesCodes)) {
+      const modeFilePath = `${folderPathField}figma_styles_${modeName}.dart`;
+      const commitResultMode = await commitFileToGitHub(modeFilePath, code, newBranch);
+      if (!commitResultMode) return;
+    }
+
+    // Commit each variable mode file
+    for (const [modeName, code] of Object.entries(variablesModesCodes)) {
       const modeFilePath = `${folderPathField}figma_variables_${modeName}.dart`;
       const commitResultMode = await commitFileToGitHub(modeFilePath, code, newBranch);
       if (!commitResultMode) return;
@@ -121,15 +117,15 @@ export default function GitHubModal({
         base: branchField,
         body: `This pull request updates the following files with the latest updates from Figma Variables and Styles:
 
-- figma_variables.dart (main interface)
-- figma_variables_default.dart (default mode)
-${Object.keys(modesCodes)
-  .filter(mode => mode !== 'default')
-  .map(mode => `- figma_variables_${mode}.dart (${mode} mode)`)
+- figma_variables.dart (variables interface)
+${Object.keys(variablesModesCodes)
+  .map(mode => `- figma_variables_${mode}.dart (variables for ${mode} mode)`)
   .join('\n')}
-- figma_styles.dart
-- figma_styles_internal.dart
-- figma_utils.dart
+- figma_styles.dart (styles interface)
+${Object.keys(stylesModesCodes)
+  .map(mode => `- figma_styles_${mode}.dart (styles for ${mode} mode)`)
+  .join('\n')}
+- figma_utils.dart (used by the other files)
 
 Created automatically by figma-variables-to-code plugin.`,
       }),

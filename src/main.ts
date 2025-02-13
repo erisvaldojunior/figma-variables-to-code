@@ -1,6 +1,6 @@
 import { showUI } from '@create-figma-plugin/utilities';
 import { generateVariablesFile, generateVariablesModesFiles } from './utils/variablesGenerators';
-import { generateStylesFile, generateInternalStylesDartCode } from './utils/stylesGenerators';
+import { generateStylesFile, generateStylesModesFiles } from './utils/stylesGenerators';
 import { generateUtilsFile } from './utils/utilsGenerators';
 
 export default function () {
@@ -15,7 +15,7 @@ export default function () {
   
   /* Prepare styles for code generation */
   const stylesFile = generateStylesFile();
-  const stylesInternalDartFile = generateInternalStylesDartCode();
+  const stylesModesFiles = generateStylesModesFiles();
 
   /* Prepare utils for code generation */
   const utilsFile = generateUtilsFile();
@@ -26,7 +26,7 @@ export default function () {
       variablesFile,
       variablesModesFiles,
       stylesFile,
-      stylesInternalDartFile,
+      stylesModesFiles,
       utilsFile
     },
   });

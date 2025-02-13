@@ -2,6 +2,7 @@ import { formatLine } from './dartFormat';
 import { rgbaObjectToDartHexaString } from './converters';
 import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
+import { getUniqueModes } from './variablesModes';
 
 type VariableValueType = {
 	valueContent: string;
@@ -103,7 +104,6 @@ export function generateVariablesModesFiles(): Record<string, string> {
 				
 			if (!modeCodes[modeName]) {
 				modeCodes[modeName] = generateDartCodeForMode(
-					collection,
 					variables,
 					mode.modeId
 				);
@@ -118,14 +118,13 @@ export function generateVariablesModesFiles(): Record<string, string> {
  * Generates the Dart code for a specific mode
  */
 function generateDartCodeForMode(
-	collection: VariableCollection,
 	variables: Variable[],
 	modeId: string
 ): string {
 	let dartFile = generateHeaderComment();
 	dartFile += "import 'dart:ui';\n";
 	
-	// Gerar código para cada coleção
+	// Generate code for each collection
 	const collections = figma.variables.getLocalVariableCollections();
 	collections.forEach((collection) => {
 		const collectionVariables = variables.filter(
@@ -392,19 +391,3 @@ function isVariableAlias(value: any): value is VariableAlias {
 	);
 }
 
-/**
- * Gets unique modes from all collections
- */
-function getUniqueModes(collections: VariableCollection[]): { modeId: string, name: string }[] {
-	const modesMap = new Map<string, { modeId: string, name: string }>();
-	
-	collections.forEach(collection => {
-		collection.modes.forEach(mode => {
-			if (mode.modeId !== collection.defaultModeId) {
-				modesMap.set(mode.modeId, { modeId: mode.modeId, name: mode.name });
-			}
-		});
-	});
-	
-	return Array.from(modesMap.values());
-}
