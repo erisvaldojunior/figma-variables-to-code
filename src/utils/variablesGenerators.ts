@@ -123,7 +123,7 @@ function generateDartCodeForMode(
 	modeId: string
 ): string {
 	let dartFile = generateHeaderComment();
-	dartFile += "import 'dart:ui';\n\n";
+	dartFile += "import 'dart:ui';\n";
 	
 	// Gerar código para cada coleção
 	const collections = figma.variables.getLocalVariableCollections();
@@ -142,7 +142,7 @@ function generateDartCodeForMode(
 		}
 	});
 	
-	return dartFile + '\n';
+	return dartFile;
 }
 
 /*
@@ -313,7 +313,7 @@ function generateDartCodeForCollection(
 	// Converts collection name to PascalCase
 	const collectionName = toPascalCase(collection.name);
 	// Start creating the Dart class with PascalCase class name
-	let dartCode = `final class ${collectionName} {\n`;
+	let dartCode = `\nfinal class ${collectionName} {\n`;
 	// Create class constructor
 	dartCode += `  const ${collectionName}();\n`;
 	// Group variables by their group name
