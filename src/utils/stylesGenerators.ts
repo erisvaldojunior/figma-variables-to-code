@@ -187,9 +187,9 @@ function generateTextStyleHeight(
     const fontSizeVariable = figma.variables.getVariableById(fontSizeBoundVariable.id);
     const fontSizeReference = generateVariableReference(fontSizeVariable);
     if (lineHeightReference && fontSizeReference) {
-      const value = `getHeight(${modeVarPrefix}${lineHeightReference}, ${modeVarPrefix}${fontSizeReference})`;
-      return `    height: ${formatLine(value, 4)},\n`;
-    }
+      const line = `    height: getHeight(${modeVarPrefix}${lineHeightReference}, ${modeVarPrefix}${fontSizeReference}),`;
+      return formatLine(line, 4) + '\n';
+     }
   }
   const value = fallbackValue;
   return `    height: ${value},\n`;
