@@ -17,6 +17,12 @@ type TextStyle = {
   };
 } & globalThis.TextStyle;
 
+type ImportItem = {
+  name: string;
+  path: string;
+  alias?: string;
+};
+
 /**
  * Generates the Dart file `figma_styles.dart`.
  * @returns The generated Dart file as a string.
@@ -26,19 +32,30 @@ export function generateStylesFile(): string {
   let dartFile = generateHeaderComment();
   // Get all modes and sort them alphabetically by their file names
   const uniqueModes = getUniqueModes(collections);
-  const sortedImports = [
+  const sortedImports: ImportItem[] = [
     ...uniqueModes.map(mode => ({
       name: formatModeNameForFile(mode.name),
-      alias: `${formatModeNameForFile(mode.name)}_mode`
+      alias: `${formatModeNameForFile(mode.name)}_mode`,
+      path: `figma_styles_${formatModeNameForFile(mode.name)}.dart`
     })),
-    { name: 'default', alias: 'default_mode' }  // Add default mode to the list
-  ].sort((a, b) => a.name.localeCompare(b.name));  // Sort everything alphabetically
+    { 
+      name: 'default', 
+      alias: 'default_mode',
+      path: 'figma_styles_default.dart'
+    },
+    {
+      name: 'styles_interface',
+      path: 'figma_styles_interface.dart'
+    }
+  ].sort((a, b) => a.path.localeCompare(b.path));
   
-  // Generate imports in alphabetical order
-  sortedImports.forEach(({ name, alias }) => {
-    dartFile += `import 'figma_styles_${name}.dart' as ${alias} show TextStyles;\n`;
+  // Generate imports
+  sortedImports.forEach(({ path, alias }) => {
+    dartFile += alias ? 
+      `import '${path}' as ${alias} show TextStyles;\n` : 
+      `import '${path}';\n`;
   });
-  dartFile += `import 'figma_styles_interface.dart';\n\n`;
+  dartFile += '\n';
   
   // Expose default mode directly
   dartFile += `const textStyles = default_mode.TextStyles();\n\n`;

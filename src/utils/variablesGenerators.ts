@@ -9,6 +9,12 @@ type VariableValueType = {
 	valueType: 'alias' | 'color' | 'primitive' | undefined;
 };
 
+type ImportItem = {
+  name: string;
+  path: string;
+  alias?: string;
+};
+
 /**
  * Generates figma_variables.dart file.
  * @returns The generated Dart code (entire file).
@@ -19,18 +25,30 @@ export function generateVariablesFile(): string {
 	
 	// Generate imports
 	const uniqueModes = getUniqueModes(collections);
-	const sortedImports = [
+	const sortedImports: ImportItem[] = [
 		...uniqueModes.map(mode => ({
 			name: formatModeNameForFile(mode.name),
-			alias: `${formatModeNameForFile(mode.name)}_mode`
+			alias: `${formatModeNameForFile(mode.name)}_mode`,
+			path: `figma_variables_${formatModeNameForFile(mode.name)}.dart`
 		})),
-		{ name: 'default', alias: 'default_mode' }
-	].sort((a, b) => a.name.localeCompare(b.name));
-	
-	sortedImports.forEach(({ name, alias }) => {
-		dartFile += `import 'figma_variables_${name}.dart' as ${alias};\n`;
-	});
-	dartFile += `import 'figma_variables_interface.dart';\n\n`;
+		{ 
+			name: 'default', 
+			alias: 'default_mode',
+			path: 'figma_variables_default.dart'
+		},
+		{
+			name: 'variables_interface',
+			path: 'figma_variables_interface.dart'
+		}
+	].sort((a, b) => a.path.localeCompare(b.path));
+
+  	// Generate imports
+  	sortedImports.forEach(({ path, alias }) => {
+    	dartFile += alias ? 
+      	`import '${path}' as ${alias};\n` : 
+      	`import '${path}';\n`;
+  	});
+  	dartFile += '\n';	
 	
 	// Expose default mode variables directly
 	collections.forEach((collection) => {
