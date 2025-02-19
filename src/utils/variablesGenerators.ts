@@ -282,7 +282,19 @@ function generateDartCodeForVariable(
 		figmaVariables,
 		modeId
 	);
-	const resolvedType = variableObject.resolvedType;
+
+	// Se for um alias, precisamos pegar o tipo da variável original
+	let resolvedType = variableObject.resolvedType;
+	if (valueType === 'alias') {
+		const modeValue = variableObject.valuesByMode[modeId];
+		if (isVariableAlias(modeValue)) {
+			const originalVariable = figmaVariables.find(v => v.id === modeValue.id);
+			if (originalVariable) {
+				resolvedType = originalVariable.resolvedType;
+			}
+		}
+	}
+
 	let doubleKeyPlusSpace = '';
 	let value = valueContent;
 	if (resolvedType === 'STRING') {
@@ -290,8 +302,10 @@ function generateDartCodeForVariable(
 	} else if (resolvedType === 'FLOAT') {
 		doubleKeyPlusSpace = 'double ';
 	}
+
 	let dartCode = '\n';
 	dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
+	dartCode += `  @override\n`;
 	dartCode += `  ${getDartType(resolvedType)} get ${dartKey} => _${dartKey};\n`;
 	return dartCode;
 }
@@ -341,8 +355,8 @@ function generateDartCodeForCollection(
 	
 	// Generate root level variables
 	if (groupedVariables['__root__']) {
-		groupedVariables['__root__'].forEach(variable => {
-			dartCode += generateVariableCode(variable, figmaVariables, modeId);
+		groupedVariables['__root__'].forEach((variable) => {
+			dartCode += generateDartCodeForVariable(variable, figmaVariables, modeId);
 		});
 	}
 	
@@ -367,8 +381,8 @@ function generateDartCodeForCollection(
 			dartCode += `\nfinal class ${groupClassName} implements ${groupInterfaceName} {\n`;
 			dartCode += `  const ${groupClassName}();\n`;
 			
-			groupedVariables[groupName].forEach(variable => {
-				dartCode += generateVariableCode(variable, figmaVariables, modeId);
+			groupedVariables[groupName].forEach((variable) => {
+				dartCode += generateDartCodeForVariable(variable, figmaVariables, modeId);
 			});
 			
 			dartCode += '}\n';
@@ -389,10 +403,8 @@ function getDartType(variableType: VariableResolvedDataType): string {
 		case 'COLOR': return 'Color';
 		case 'FLOAT': return 'double';
 		case 'STRING': return 'String';
-		case 'NUMBER': return 'double';
 		default:
-			console.warn(`Unhandled variable type: ${variableType}, defaulting to String`);
-			return 'String';
+			throw new Error('Unknown variable type');
 	}
 }
 
@@ -489,38 +501,5 @@ function generateInterfacesForCollection(
 	});
 	
 	return interfaceCode;
-}
-
-/**
- * Generates Dart code for an individual variable.
- */
-function generateVariableCode(
-	variable: Variable,
-	figmaVariables: Variable[],
-	modeId: string
-): string {
-	const variableName = variable.name.split('/').pop();
-	let dartCode = `\n`;
-
-	if (variableName) {
-		const { valueContent, valueType } = generateDartValueString(
-			variable,
-			figmaVariables,
-			modeId
-		);
-		const resolvedType = variable.resolvedType;
-		let doubleKeyPlusSpace = '';
-		let value = valueContent;
-		if (resolvedType === 'STRING') {
-			value = toSingleQuotes(valueContent);
-		} else if (resolvedType === 'FLOAT') {
-			doubleKeyPlusSpace = 'double ';
-		}
-		dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} ${doubleKeyPlusSpace}_${variable.name} = ${value};\n`;
-		dartCode += `  @override\n`;
-		dartCode += `  ${getDartType(resolvedType)} get ${variable.name} => _${variable.name};\n`;
-	}
-
-	return dartCode;
 }
 
