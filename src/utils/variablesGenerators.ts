@@ -303,7 +303,7 @@ function generateDartCodeForVariable(
 	}
 
 	let dartCode = '\n';
-	dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
+	dartCode += `  static const ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
 	dartCode += `  @override\n`;
 	dartCode += `  ${getDartType(resolvedType)} get ${dartKey} => _${dartKey};\n`;
 	return dartCode;
@@ -363,7 +363,7 @@ function generateDartCodeForCollection(
 	Object.keys(groupedVariables).forEach(groupName => {
 		if (groupName !== '__root__') {
 			const groupInterfaceName = `I${collectionName}${toPascalCase(groupName)}`;
-			dartCode += `\n  static final _${groupName} = ${collectionName}${toPascalCase(groupName)}();\n`;
+			dartCode += `\n  static const _${groupName} = ${collectionName}${toPascalCase(groupName)}();\n`;
 			dartCode += `  @override\n`;
 			dartCode += `  ${groupInterfaceName} get ${groupName} => _${groupName};\n`;
 		}
