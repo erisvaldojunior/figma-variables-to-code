@@ -17,7 +17,7 @@ export function generateVariablesFile(): string {
 	const collections = figma.variables.getLocalVariableCollections();
 	let dartFile = generateHeaderComment();
 	
-	// Get all modes and sort them alphabetically by their file names
+	// Generate imports
 	const uniqueModes = getUniqueModes(collections);
 	const sortedImports = [
 		...uniqueModes.map(mode => ({
@@ -27,7 +27,6 @@ export function generateVariablesFile(): string {
 		{ name: 'default', alias: 'default_mode' }
 	].sort((a, b) => a.name.localeCompare(b.name));
 	
-	// Generate imports
 	sortedImports.forEach(({ name, alias }) => {
 		dartFile += `import 'figma_variables_${name}.dart' as ${alias};\n`;
 	});
@@ -36,7 +35,7 @@ export function generateVariablesFile(): string {
 	// Expose default mode variables directly
 	collections.forEach((collection) => {
 		const name = toCamelCase(collection.name);
-		dartFile += `final ${name} = default_mode.${toPascalCase(collection.name)}();\n`;
+		dartFile += `const ${name} = default_mode.${toPascalCase(collection.name)}();\n`;
 	});
 	dartFile += '\n';
 	
@@ -44,8 +43,8 @@ export function generateVariablesFile(): string {
 	dartFile += '// Create typed wrapper for other modes\n';
 	dartFile += 'class ModeWrapper<';
 	collections.forEach((collection, index) => {
-		const interfaceName = `I${toPascalCase(collection.name)}`;
-		dartFile += `${interfaceName}${index === collections.length - 1 ? '>' : ', '}`;
+		const name = toPascalCase(collection.name);
+		dartFile += `${name} extends I${name}${index === collections.length - 1 ? '>' : ', '}`;
 	});
 	dartFile += ' {\n';
 	
@@ -54,12 +53,12 @@ export function generateVariablesFile(): string {
 		const name = toCamelCase(collection.name);
 		dartFile += `    required this.${name},\n`;
 	});
-	dartFile += '  });\n';
+	dartFile += '  });\n\n';
 	
 	collections.forEach((collection) => {
-		const name = toCamelCase(collection.name);
-		const interfaceName = `I${toPascalCase(collection.name)}`;
-		dartFile += `  final ${interfaceName} ${name};\n`;
+		const typeName = toPascalCase(collection.name);
+		const variableName = toCamelCase(collection.name);
+		dartFile += `  final ${typeName} ${variableName};\n`;
 	});
 	dartFile += '}\n\n';
 	
@@ -68,7 +67,7 @@ export function generateVariablesFile(): string {
 		const modeName = formatModeNameForFile(mode.name);
 		const modeVarName = formatModeNameForVariable(mode.name) + 'Mode';
 		
-		dartFile += `final ${modeVarName} = ModeWrapper<\n`;
+		dartFile += `const ${modeVarName} = ModeWrapper<\n`;
 		collections.forEach((collection, index) => {
 			const className = toPascalCase(collection.name);
 			dartFile += `    ${modeName}_mode.${className}${index === collections.length - 1 ? '>' : ',\n'}`;
