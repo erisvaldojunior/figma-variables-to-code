@@ -41,7 +41,7 @@ export function generateStylesFile(): string {
   dartFile += `import 'figma_styles_interface.dart';\n\n`;
   
   // Expose default mode directly
-  dartFile += `final textStyles = default_mode.TextStyles();\n\n`;
+  dartFile += `const textStyles = default_mode.TextStyles();\n\n`;
   
   // Create typed wrapper class
   dartFile += '// Create typed wrapper for other modes\n';
@@ -56,7 +56,7 @@ export function generateStylesFile(): string {
   uniqueModes.forEach((mode, index) => {
     const modeName = formatModeNameForFile(mode.name);
     const modeVarName = formatModeNameForVariable(mode.name) + 'Mode';    
-    dartFile += `final ${modeVarName} = ModeWrapper<${modeName}_mode.TextStyles>(\n`;    
+    dartFile += `const ${modeVarName} = ModeWrapper<${modeName}_mode.TextStyles>(\n`;    
     dartFile += `  textStyles: ${modeName}_mode.TextStyles(),\n`;
     dartFile += `);\n${index < uniqueModes.length - 1 ? '\n' : ''}`;
   });
@@ -150,7 +150,7 @@ export function generateStyleCodeForMode(modeName: string): string {
     const groupNameCamelCase = toCamelCase(groupName);
     const groupNamePascalCase = toPascalCase(groupName);
     dartFile += `\n`;
-    dartFile += `  static final _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
+    dartFile += `  static const _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
     dartFile += `  @override\n`;
     dartFile += `  I${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
   });
@@ -211,6 +211,7 @@ function generateTextStyleDartCode(modeVarPrefix: string, style: TextStyle): str
     }
     
     dartCode += `  );\n`;
+    dartCode += `  @override\n`;
     dartCode += `  TextStyle get ${styleNameCamelCase} => _${styleNameCamelCase};\n`;  
   }
 
