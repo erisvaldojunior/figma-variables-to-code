@@ -11,6 +11,8 @@ function Plugin() {
   const [highlightedCode, setHighlightedCode] = useState('');
   const [highlightedStylesCode, setHighlightedStylesCode] = useState('');
   const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
+  const [highlightedStylesInterfaceCode, setHighlightedStylesInterfaceCode] = useState('');
+  const [highlightedVariablesInterfaceCode, setHighlightedVariablesInterfaceCode] = useState('');
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [stylesModesCodes, setStylesModesCodes] = useState<Record<string, string>>({});
   const [variablesModesCodes, setVariablesModesCodes] = useState<Record<string, string>>({});
@@ -27,6 +29,12 @@ function Plugin() {
       }
       if (receivedFiles.utilsFile) {
         highlightCode(receivedFiles.utilsFile, setHighlightedUtilsCode);
+      }
+      if (receivedFiles.stylesInterfaceFile) {
+        highlightCode(receivedFiles.stylesInterfaceFile, setHighlightedStylesInterfaceCode);
+      }
+      if (receivedFiles.variablesInterfaceFile) {
+        highlightCode(receivedFiles.variablesInterfaceFile, setHighlightedVariablesInterfaceCode);
       }
       
       // Handle variables modes files
@@ -50,7 +58,6 @@ function Plugin() {
         });
         setStylesModesCodes(newModesCodes);
       }
-
     };
   }, []);
 
@@ -65,6 +72,24 @@ function Plugin() {
         </button>
       </div>
 
+      {/* Variables Interface */}
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_variables_interface.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedVariablesInterfaceCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedVariablesInterfaceCode }}
+      ></pre>
+
+      {/* Variables */}
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_variables.dart</h2>
         <div>
@@ -81,6 +106,24 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedCode }}
       ></pre>
 
+      {/* Styles Interface */}
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_styles_interface.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedStylesInterfaceCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedStylesInterfaceCode }}
+      ></pre>
+
+      {/* Styles */}
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_styles.dart</h2>
         <div>
@@ -97,6 +140,7 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedStylesCode }}
       ></pre>
 
+      {/* Utils */}
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_utils.dart</h2>
         <div>
@@ -164,6 +208,8 @@ function Plugin() {
           highlightedCode={highlightedCode}
           highlightedStylesCode={highlightedStylesCode}
           highlightedUtilsCode={highlightedUtilsCode}
+          highlightedStylesInterfaceCode={highlightedStylesInterfaceCode}
+          highlightedVariablesInterfaceCode={highlightedVariablesInterfaceCode}
           stylesModesCodes={stylesModesCodes}
           variablesModesCodes={variablesModesCodes}
           onClose={() => setShowGitHubModal(false)}

@@ -33,32 +33,74 @@ export function generateStylesFile(): string {
     })),
     { name: 'default', alias: 'default_mode' }  // Add default mode to the list
   ].sort((a, b) => a.name.localeCompare(b.name));  // Sort everything alphabetically
+  
   // Generate imports in alphabetical order
   sortedImports.forEach(({ name, alias }) => {
     dartFile += `import 'figma_styles_${name}.dart' as ${alias} show TextStyles;\n`;
   });
-  dartFile += '\n';
+  dartFile += `import 'figma_styles_interface.dart';\n\n`;
+  
   // Expose default mode directly
-  dartFile += `final textStyles = default_mode.TextStyles();\n`;
-  dartFile += '\n';
+  dartFile += `final textStyles = default_mode.TextStyles();\n\n`;
+  
   // Create typed wrapper class
   dartFile += '// Create typed wrapper for other modes\n';
-  dartFile += 'class ModeWrapper<TextStyles> {\n';
+  dartFile += 'class ModeWrapper<T extends ITextStyles> {\n';
   dartFile += '  const ModeWrapper({\n';
   dartFile += `    required this.textStyles,\n`;
-  dartFile += '  });\n';  
-  dartFile += `  final TextStyles textStyles;\n`;
+  dartFile += '  });\n';
+  dartFile += `  final T textStyles;\n`;
   dartFile += '}\n\n';
+  
   // Create instances for each mode
   uniqueModes.forEach((mode, index) => {
     const modeName = formatModeNameForFile(mode.name);
     const modeVarName = formatModeNameForVariable(mode.name) + 'Mode';    
     dartFile += `final ${modeVarName} = ModeWrapper<${modeName}_mode.TextStyles>(\n`;    
     dartFile += `  textStyles: ${modeName}_mode.TextStyles(),\n`;
-    // Add single newline if it's not the last mode
     dartFile += `);\n${index < uniqueModes.length - 1 ? '\n' : ''}`;
   });
-  return dartFile;  
+  
+  return dartFile;
+}
+
+/**
+ * Generates the styles interface file `figma_styles_interface.dart`.
+ * @returns The generated interface file as a string.
+ */
+export function generateStylesInterfaceFile(): string {
+  let dartFile = generateHeaderComment();
+  dartFile += `import 'package:flutter/material.dart';\n\n`;
+  
+  // Generate base interface for text styles
+  dartFile += '// Base interface for text styles across all modes\n';
+  dartFile += 'abstract interface class ITextStyles {\n';
+  dartFile += '  IDisplay get display;\n';
+  dartFile += '  ITitle get title;\n';
+  dartFile += '  IBody get body;\n';
+  dartFile += '  ILabel get label;\n';
+  dartFile += '}\n\n';
+  
+  // Generate interfaces for each style group
+  const textStyles = figma.getLocalTextStyles();
+  const groupedStyles = groupTextStyles(textStyles);
+  
+  Object.keys(groupedStyles).forEach(groupName => {
+    const interfaceName = `I${toPascalCase(groupName)}`;
+    dartFile += `abstract interface class ${interfaceName} {\n`;
+    
+    groupedStyles[groupName].forEach(style => {
+      const styleName = style.name.split('/').pop();
+      if (styleName) {
+        const propertyName = toCamelCase(styleName);
+        dartFile += `  TextStyle get ${propertyName};\n`;
+      }
+    });
+    
+    dartFile += '}\n\n';
+  });
+  
+  return dartFile;
 }
 
 /**
@@ -95,29 +137,37 @@ export function generateStyleCodeForMode(modeName: string): string {
   const textStyles = figma.getLocalTextStyles();
   let dartFile = generateHeaderComment();
   dartFile += `import 'package:flutter/material.dart';\n`;
+  dartFile += `import 'figma_styles_interface.dart';\n`;
   dartFile += `import 'figma_utils.dart';\n`;
   dartFile += `import 'figma_variables.dart';\n\n`;
-  dartFile += `final class TextStyles {\n`;
-	dartFile += `  const TextStyles();\n`;
+  
+  // Make TextStyles implement ITextStyles
+  dartFile += `final class TextStyles implements ITextStyles {\n`;
+  dartFile += `  const TextStyles();\n`;
+  
   const groupedTextStyles = groupTextStyles(textStyles);
   Object.keys(groupedTextStyles).forEach((groupName) => {
     const groupNameCamelCase = toCamelCase(groupName);
     const groupNamePascalCase = toPascalCase(groupName);
     dartFile += `\n`;
     dartFile += `  static final _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
-    dartFile += `  ${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
+    dartFile += `  @override\n`;
+    dartFile += `  I${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
   });
   dartFile += `}\n`;
+  
+  // Make each style group implement its interface
   Object.keys(groupedTextStyles).forEach((groupName) => {
     const groupClassName = toPascalCase(groupName);
     dartFile += `\n`;
-    dartFile += `final class ${groupClassName} {\n`;
+    dartFile += `final class ${groupClassName} implements I${groupClassName} {\n`;
     dartFile += `  const ${groupClassName}();\n`;
     groupedTextStyles[groupName].forEach((style) => {
       dartFile += generateTextStyleDartCode(modeVarPrefix, style);
     });
     dartFile += `}\n`;
   });
+  
   return dartFile;
 }
 
