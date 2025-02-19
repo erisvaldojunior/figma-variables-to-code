@@ -4,10 +4,12 @@ import { useState, useEffect } from 'preact/hooks';
 type GitHubModalProps = {
   onClose: () => void;
   highlightedCode: string;
-  highlightedInternalCode: string;
   highlightedStylesCode: string;
-  highlightedStylesInternalCode: string;
   highlightedUtilsCode: string;
+  highlightedStylesInterfaceCode: string;
+  highlightedVariablesInterfaceCode: string;
+  stylesModesCodes: Record<string, string>;
+  variablesModesCodes: Record<string, string>;
 };
 
 type CommitBody = {
@@ -20,10 +22,12 @@ type CommitBody = {
 export default function GitHubModal({
   onClose,
   highlightedCode,
-  highlightedInternalCode,
   highlightedStylesCode,
-  highlightedStylesInternalCode,
-  highlightedUtilsCode
+  highlightedUtilsCode,
+  highlightedStylesInterfaceCode,
+  highlightedVariablesInterfaceCode,
+  stylesModesCodes,
+  variablesModesCodes
 }: GitHubModalProps) {
   const [usernameField, setUsernameField] = useState('');
   const [tokenField, setTokenField] = useState('');
@@ -72,40 +76,65 @@ export default function GitHubModal({
       return;
     }
 
-    // Paths for variable files
-    const internalFilePath = `${folderPathField}figma_variables_internal.dart`;
-    const interfaceFilePath = `${folderPathField}figma_variables.dart`;
-
-    // Paths for style files
-    const internalStylesFilePath = `${folderPathField}figma_styles_internal.dart`;
-    const interfaceStylesFilePath = `${folderPathField}figma_styles.dart`;
-
-    // Path for utils file
+    const stylesFilePath = `${folderPathField}figma_styles.dart`;
+    const stylesInterfaceFilePath = `${folderPathField}figma_styles_interface.dart`;
     const utilsFilePath = `${folderPathField}figma_utils.dart`;
+    const variablesFilePath = `${folderPathField}figma_variables.dart`;
+    const variablesInterfaceFilePath = `${folderPathField}figma_variables_interface.dart`;
 
-    // Commit the figma_utils.dart file
+    // Commit the interface files first
+    const commitResultStylesInterface = await commitFileToGitHub(stylesInterfaceFilePath, highlightedStylesInterfaceCode, newBranch);
+    if (!commitResultStylesInterface) return;
+
+    const commitResultVariablesInterface = await commitFileToGitHub(variablesInterfaceFilePath, highlightedVariablesInterfaceCode, newBranch);
+    if (!commitResultVariablesInterface) return;
+
+    // Commit the utils file
     const commitResultUtils = await commitFileToGitHub(utilsFilePath, highlightedUtilsCode, newBranch);
     if (!commitResultUtils) return;
 
-    // Commit the figma_variables_internal.dart file
-    const commitResultInternal = await commitFileToGitHub(internalFilePath, highlightedInternalCode, newBranch);
-    if (!commitResultInternal) return;
+    // Commit the main files
+    const commitResultVariables = await commitFileToGitHub(variablesFilePath, highlightedCode, newBranch);
+    if (!commitResultVariables) return;
 
-    // Commit the figma_variables.dart file
-    const commitResultExternal = await commitFileToGitHub(interfaceFilePath, highlightedCode, newBranch);
-    if (!commitResultExternal) return;
+    const commitResultStyles = await commitFileToGitHub(stylesFilePath, highlightedStylesCode, newBranch);
+    if (!commitResultStyles) return;
 
-    // Commit the figma_styles_internal.dart file
-    const commitResultInternalStyles = await commitFileToGitHub(internalStylesFilePath, highlightedStylesInternalCode, newBranch);
-    if (!commitResultInternalStyles) return;
+    // Commit each style mode file
+    for (const [modeName, code] of Object.entries(stylesModesCodes)) {
+      const modeFilePath = `${folderPathField}figma_styles_${modeName}.dart`;
+      const commitResultMode = await commitFileToGitHub(modeFilePath, code, newBranch);
+      if (!commitResultMode) return;
+    }
 
-    // Commit the figma_styles.dart file
-    const commitResultExternalStyles = await commitFileToGitHub(interfaceStylesFilePath, highlightedStylesCode, newBranch);
-    if (!commitResultExternalStyles) return;
+    // Commit each variable mode file
+    for (const [modeName, code] of Object.entries(variablesModesCodes)) {
+      const modeFilePath = `${folderPathField}figma_variables_${modeName}.dart`;
+      const commitResultMode = await commitFileToGitHub(modeFilePath, code, newBranch);
+      if (!commitResultMode) return;
+    }
 
     // Create a pull request
     const pullRequestUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/pulls`;
 
+    // Update PR body to include interface files
+    const pullRequestBody = `This pull request updates the following files with the latest updates from Figma Variables and Styles:
+
+- figma_variables_interface.dart (variables interfaces)
+- figma_variables.dart (variables implementation)
+${Object.keys(variablesModesCodes)
+  .map(mode => `- figma_variables_${mode}.dart (variables for ${mode} mode)`)
+  .join('\n')}
+- figma_styles_interface.dart (styles interfaces)
+- figma_styles.dart (styles implementation)
+${Object.keys(stylesModesCodes)
+  .map(mode => `- figma_styles_${mode}.dart (styles for ${mode} mode)`)
+  .join('\n')}
+- figma_utils.dart (used by the other files)
+
+Created automatically by figma-variables-to-code plugin.`;
+
+    // Create pull request with updated body
     const pullRequestResponse = await fetch(pullRequestUrl, {
       method: 'POST',
       headers: {
@@ -116,7 +145,7 @@ export default function GitHubModal({
         title: `chore: Update Figma Variables and Styles`,
         head: newBranch,
         base: branchField,
-        body: `This pull request updates the following files with the latest updates from Figma Variables and Styles:\n\n- figma_variables.dart\n- figma_variables_internal.dart\n- figma_styles.dart\n- figma_styles_internal.dart\n- figma_utils.dart\n\nCreated automatically by figma-variables-to-code plugin.`,
+        body: pullRequestBody,
       }),
     });
 

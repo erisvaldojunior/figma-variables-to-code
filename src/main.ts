@@ -1,7 +1,7 @@
 import { showUI } from '@create-figma-plugin/utilities';
-import { generateDartCode, generateInternalDartCode } from './utils/variablesGenerators';
-import { generateStylesDartCode, generateInternalStylesDartCode } from './utils/stylesGenerators';
-import { generateUtilsDartCode } from './utils/utilsGenerators';
+import { generateVariablesFile, generateVariablesModesFiles, generateVariablesInterfaceFile } from './utils/variablesGenerators';
+import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile } from './utils/stylesGenerators';
+import { generateUtilsFile } from './utils/utilsGenerators';
 
 export default function () {
   showUI({
@@ -10,24 +10,28 @@ export default function () {
   });
 
   /* Prepare variables for code generation */
-  const dartFile = generateDartCode();
-  const dartInternalFile = generateInternalDartCode();
+  const variablesFile = generateVariablesFile();
+  const variablesModesFiles = generateVariablesModesFiles();
+  const variablesInterfaceFile = generateVariablesInterfaceFile();
   
   /* Prepare styles for code generation */
-  const stylesDartFile = generateStylesDartCode();
-  const stylesInternalDartFile = generateInternalStylesDartCode();
+  const stylesFile = generateStylesFile();
+  const stylesModesFiles = generateStylesModesFiles();
+  const stylesInterfaceFile = generateStylesInterfaceFile();
 
   /* Prepare utils for code generation */
-  const utilsDartFile = generateUtilsDartCode();
+  const utilsFile = generateUtilsFile();
   
   /* Sends to the UI the code generation */
   figma.ui.postMessage({
     files: {
-      dartFile,
-      dartInternalFile,
-      stylesDartFile,
-      stylesInternalDartFile,
-      utilsDartFile
+      variablesFile,
+      variablesModesFiles,
+      variablesInterfaceFile,
+      stylesFile,
+      stylesModesFiles,
+      stylesInterfaceFile,
+      utilsFile
     },
   });
 

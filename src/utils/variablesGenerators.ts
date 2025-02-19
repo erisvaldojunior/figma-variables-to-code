@@ -1,57 +1,163 @@
+import { formatLine } from './dartFormat';
 import { rgbaObjectToDartHexaString } from './converters';
-import { toCamelCase, toPascalCase, toSingleQuotes } from './string';
+import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
+import { getUniqueModes } from './variablesModes';
 
 type VariableValueType = {
 	valueContent: string;
 	valueType: 'alias' | 'color' | 'primitive' | undefined;
 };
 
+type ImportItem = {
+  name: string;
+  path: string;
+  alias?: string;
+};
+
 /**
- * Generates the complete Dart code from Figma Variables.
+ * Generates figma_variables.dart file.
  * @returns The generated Dart code (entire file).
  */
-export function generateDartCode(): string {
+export function generateVariablesFile(): string {
 	const collections = figma.variables.getLocalVariableCollections();
-	// Import dart:ui, needed for Dart Color class
 	let dartFile = generateHeaderComment();
-	dartFile += `import 'figma_variables_internal.dart'\n`;
-	dartFile += `    show `;
+	
+	// Generate imports
+	const uniqueModes = getUniqueModes(collections);
+	const sortedImports: ImportItem[] = [
+		...uniqueModes.map(mode => ({
+			name: formatModeNameForFile(mode.name),
+			alias: `${formatModeNameForFile(mode.name)}_mode`,
+			path: `figma_variables_${formatModeNameForFile(mode.name)}.dart`
+		})),
+		{ 
+			name: 'default', 
+			alias: 'default_mode',
+			path: 'figma_variables_default.dart'
+		},
+		{
+			name: 'variables_interface',
+			path: 'figma_variables_interface.dart'
+		}
+	].sort((a, b) => a.path.localeCompare(b.path));
+
+  	// Generate imports
+  	sortedImports.forEach(({ path, alias }) => {
+    	dartFile += alias ? 
+      	`import '${path}' as ${alias};\n` : 
+      	`import '${path}';\n`;
+  	});
+  	dartFile += '\n';	
+	
+	// Expose default mode variables directly
+	collections.forEach((collection) => {
+		const name = toCamelCase(collection.name);
+		dartFile += `const ${name} = default_mode.${toPascalCase(collection.name)}();\n`;
+	});
+	dartFile += '\n';
+	
+	// Create typed wrapper class
+	dartFile += '// Create typed wrapper for other modes\n';
+	dartFile += 'class ModeWrapper<';
 	collections.forEach((collection, index) => {
 		const name = toPascalCase(collection.name);
-		dartFile += `${name}${index === collections.length - 1 ? ';' : ', '}`;
+		dartFile += `${name} extends I${name}${index === collections.length - 1 ? '>' : ', '}`;
 	});
-	dartFile += '\n\n';
+	dartFile += ' {\n';
+	
+	dartFile += '  const ModeWrapper({\n';
 	collections.forEach((collection) => {
-		dartFile += `final ${toCamelCase(collection.name)} = ${toPascalCase(collection.name)}();\n`;
+		const name = toCamelCase(collection.name);
+		dartFile += `    required this.${name},\n`;
 	});
+	dartFile += '  });\n\n';
+	
+	collections.forEach((collection) => {
+		const typeName = toPascalCase(collection.name);
+		const variableName = toCamelCase(collection.name);
+		dartFile += `  final ${typeName} ${variableName};\n`;
+	});
+	dartFile += '}\n\n';
+	
+	// Create instances for each mode
+	uniqueModes.forEach((mode, index) => {
+		const modeName = formatModeNameForFile(mode.name);
+		const modeVarName = formatModeNameForVariable(mode.name) + 'Mode';
+		
+		dartFile += `const ${modeVarName} = ModeWrapper<\n`;
+		collections.forEach((collection, index) => {
+			const className = toPascalCase(collection.name);
+			dartFile += `    ${modeName}_mode.${className}${index === collections.length - 1 ? '>' : ',\n'}`;
+		});
+		dartFile += '(\n';
+		
+		collections.forEach((collection) => {
+			const name = toCamelCase(collection.name);
+			const className = toPascalCase(collection.name);
+			dartFile += `  ${name}: ${modeName}_mode.${className}(),\n`;
+		});
+		dartFile += `);\n${index < uniqueModes.length - 1 ? '\n' : ''}`;
+	});
+	
 	return dartFile;
 }
 
-
 /**
- * Generates the internal Dart code from Figma Variables.
- * @returns The generated internal Dart code (entire file).
+ * Generates the Dart file for each mode from Figma Variables.
+ * @returns An object containing the generated Dart file for each mode.
  */
-export function generateInternalDartCode(): string {
+export function generateVariablesModesFiles(): Record<string, string> {
 	const collections = figma.variables.getLocalVariableCollections();
 	const variables = figma.variables.getLocalVariables();
-	// Import dart:ui, needed for Dart Color class
-	let dartFile = generateHeaderComment();
-	// eslint-disable-next-line quotes
-	dartFile += "import 'dart:ui';\n";
-	// Generate a class for each collection
+	const modeCodes: Record<string, string> = {};
+	
 	collections.forEach((collection) => {
-		dartFile += '\n';
+		collection.modes.forEach((mode) => {
+			const modeName = mode.modeId === collection.defaultModeId ? 
+				'default' : 
+				formatModeNameForFile(mode.name);
+				
+			if (!modeCodes[modeName]) {
+				modeCodes[modeName] = generateDartCodeForMode(
+					variables,
+					mode.modeId
+				);
+			}
+		});
+	});
+	
+	return modeCodes;
+}
+
+/**
+ * Generates the Dart code for a specific mode
+ */
+function generateDartCodeForMode(
+	variables: Variable[],
+	modeId: string
+): string {
+	let dartFile = generateHeaderComment();
+	dartFile += "import 'dart:ui';\n";
+	dartFile += "import 'figma_variables_interface.dart';\n\n";
+	
+	// Generate code for each collection
+	const collections = figma.variables.getLocalVariableCollections();
+	collections.forEach((collection) => {
 		const collectionVariables = variables.filter(
 			(variable) => variable.variableCollectionId === collection.id
 		);
-		dartFile += generateDartCodeForCollection(
-			collection,
-			collectionVariables,
-			variables
-		);
+		
+		if (collectionVariables.length > 0) {
+			dartFile += generateDartCodeForCollection(
+				collection,
+				collectionVariables,
+				variables,
+				modeId
+			);
+		}
 	});
+	
 	return dartFile;
 }
 
@@ -60,45 +166,77 @@ export function generateInternalDartCode(): string {
  */
 function generateDartValueString(
 	variable: Variable,
-	figmaVariables: Variable[]
+	figmaVariables: Variable[],
+	modeId: string
 ): VariableValueType {
 	const variableId = variable.id;
-	const variableObject = <Variable>(
-		figmaVariables.find((obj) => obj.id === variableId)
-	);
-	const variableValueObject = variableObject.valuesByMode;
-	if (variableValueObject) {
-		const variableValueKey = Object.keys(variableValueObject)[0];
-		if (variableValueKey) {
-			const value: VariableValue = variableValueObject[variableValueKey];
-			if (value) {
-				if (isVariableAlias(value)) {
-					const variableAlias = value as VariableAlias;
-					const relatedVariableObject = figmaVariables.find(
-						(obj) => obj.id === variableAlias.id
-					);
-					if (relatedVariableObject) {
+	const variableObject = figmaVariables.find((obj) => obj.id === variableId);
+	
+	if (!variableObject) {
+		return { valueContent: '0', valueType: 'primitive' };
+	}
+	
+	const value = variableObject.valuesByMode[modeId];
+	
+	if (!value) {
+		// If there's no value for this mode, use the default mode value
+		const defaultModeId = figma.variables
+			.getLocalVariableCollections()
+			.find(c => c.id === variableObject.variableCollectionId)
+			?.defaultModeId;
+			
+		if (defaultModeId) {
+			const defaultValue = variableObject.valuesByMode[defaultModeId];
+			if (defaultValue) {
+				if (isVariableAlias(defaultValue)) {
+					const aliasVariable = figmaVariables.find(v => v.id === defaultValue.id);
+					if (aliasVariable) {
 						return {
-							valueContent: `${generateDartKeyString(relatedVariableObject)}`,
+							valueContent: generateDartKeyString(aliasVariable),
 							valueType: 'alias',
 						};
 					}
 				} else if (variableObject.resolvedType === 'COLOR') {
 					return {
-						valueContent: rgbaObjectToDartHexaString(value as RGBA),
+						valueContent: rgbaObjectToDartHexaString(defaultValue as RGBA),
 						valueType: 'color',
 					};
-				} else {
-					// Assuming 'value' is a primitive (number, string, etc)
-					return {
-						valueContent: JSON.stringify(variableValueObject[variableValueKey]),
-						valueType: 'primitive',
-					};
 				}
+				// For primitive values, use JSON.stringify
+				return {
+					valueContent: JSON.stringify(defaultValue),
+					valueType: 'primitive',
+				};
 			}
 		}
+		// If no value is found in default mode, return 0
+		return { valueContent: '0', valueType: 'primitive' };
 	}
-	return { valueContent: '0', valueType: 'primitive' }; // generated code will be 0
+	
+	if (isVariableAlias(value)) {
+		const aliasVariable = figmaVariables.find(v => v.id === value.id);
+		if (aliasVariable) {
+			return {
+				valueContent: generateDartKeyString(aliasVariable),
+				valueType: 'alias',
+			};
+		}
+	} else if (variableObject.resolvedType === 'COLOR') {
+		return {
+			valueContent: rgbaObjectToDartHexaString(value as RGBA),
+			valueType: 'color',
+		};
+	}
+	
+	// For primitive values, convert number to string directly
+	return {
+		valueContent: typeof value === 'number' ? 
+			value.toString() : 
+			typeof value === 'string' ? 
+				value : 
+				JSON.stringify(value),
+		valueType: 'primitive',
+	};
 }
 
 /**
@@ -144,11 +282,13 @@ function generateDartKeyString(variable: Variable): string {
  * Generates Dart code for a variable.
  * @param variable - The variable to generate code for.
  * @param figmaVariables - The list of all Figma variables.
+ * @param modeId - The mode ID to generate code for.
  * @returns The generated Dart code as a string.
  */
 function generateDartCodeForVariable(
 	variable: Variable,
-	figmaVariables: Variable[]
+	figmaVariables: Variable[],
+	modeId: string
 ): string {
 	const variableObject = <Variable>(
 		figmaVariables.find((obj) => obj.id === variable.id)
@@ -156,9 +296,22 @@ function generateDartCodeForVariable(
 	const dartKey = generateDartKeyString(variable);
 	const { valueContent, valueType } = generateDartValueString(
 		variable,
-		figmaVariables
+		figmaVariables,
+		modeId
 	);
-	const resolvedType = variableObject.resolvedType;
+
+	// Se for um alias, precisamos pegar o tipo da variável original
+	let resolvedType = variableObject.resolvedType;
+	if (valueType === 'alias') {
+		const modeValue = variableObject.valuesByMode[modeId];
+		if (isVariableAlias(modeValue)) {
+			const originalVariable = figmaVariables.find(v => v.id === modeValue.id);
+			if (originalVariable) {
+				resolvedType = originalVariable.resolvedType;
+			}
+		}
+	}
+
 	let doubleKeyPlusSpace = '';
 	let value = valueContent;
 	if (resolvedType === 'STRING') {
@@ -166,8 +319,10 @@ function generateDartCodeForVariable(
 	} else if (resolvedType === 'FLOAT') {
 		doubleKeyPlusSpace = 'double ';
 	}
+
 	let dartCode = '\n';
-	dartCode += `  static ${valueType === 'primitive' ? 'const' : 'final'} ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
+	dartCode += `  static const ${doubleKeyPlusSpace}_${dartKey} = ${value};\n`;
+	dartCode += `  @override\n`;
 	dartCode += `  ${getDartType(resolvedType)} get ${dartKey} => _${dartKey};\n`;
 	return dartCode;
 }
@@ -182,24 +337,24 @@ function generateDartCodeForVariable(
 function generateDartCodeForCollection(
 	collection: VariableCollection,
 	variables: Variable[],
-	figmaVariables: Variable[]
+	figmaVariables: Variable[],
+	modeId: string
 ): string {
-	// Converts collection name to PascalCase
 	const collectionName = toPascalCase(collection.name);
-	// Start creating the Dart class with PascalCase class name
-	let dartCode = `final class ${collectionName} {\n`;
-	// Create class constructor
+	const interfaceName = `I${collectionName}`;
+	
+	// Start creating the Dart class
+	let dartCode = `\nfinal class ${collectionName} implements ${interfaceName} {\n`;
 	dartCode += `  const ${collectionName}();\n`;
-	// Group variables by their group name
-	// FIXME: nested level groups (subgroups) should generate new classes
+	
+	// Group variables
 	const groupedVariables = variables.reduce(
 		(acc: Record<string, Variable[]>, variable: Variable) => {
 			const parts = variable.name.split('/');
-			const groupName =
-				parts.length > 1 ? toCamelCase(parts.slice(0, -1).join('_')) : '';
+			const groupName = parts.length > 1 ? toCamelCase(parts.slice(0, -1).join('_')) : '';
 			const variableName = toCamelCase(parts[parts.length - 1]);
+			
 			if (!groupName) {
-				// Variables in the root of the collection
 				if (!acc['__root__']) {
 					acc['__root__'] = [];
 				}
@@ -214,36 +369,43 @@ function generateDartCodeForCollection(
 		},
 		{}
 	);
-	// Iterate over the grouped variables and generate Dart code
-	Object.keys(groupedVariables).forEach((groupName) => {
-		if (groupName === '__root__') {
-			// Generate Dart code for variables in the root of the collection
-			groupedVariables[groupName].forEach((variable) => {
-				dartCode += generateDartCodeForVariable(variable, figmaVariables);
-			});
-		} else {
-			const groupNameCamelCase = toCamelCase(groupName);
-			const groupNamePascalCase = collectionName + toPascalCase(groupName);
-			dartCode += '\n';
-			dartCode += `  static final _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
-			dartCode += `  ${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
+	
+	// Generate root level variables
+	if (groupedVariables['__root__']) {
+		groupedVariables['__root__'].forEach((variable) => {
+			dartCode += generateDartCodeForVariable(variable, figmaVariables, modeId);
+		});
+	}
+	
+	// Generate group getters
+	Object.keys(groupedVariables).forEach(groupName => {
+		if (groupName !== '__root__') {
+			const groupInterfaceName = `I${collectionName}${toPascalCase(groupName)}`;
+			dartCode += `\n  static const _${groupName} = ${collectionName}${toPascalCase(groupName)}();\n`;
+			dartCode += `  @override\n`;
+			dartCode += `  ${groupInterfaceName} get ${groupName} => _${groupName};\n`;
 		}
 	});
-	// Close the Dart class
+	
 	dartCode += '}\n';
-	// Generate separate classes for each group outside the parent class
-	Object.keys(groupedVariables).forEach((groupName) => {
+	
+	// Generate group classes
+	Object.keys(groupedVariables).forEach(groupName => {
 		if (groupName !== '__root__') {
-			const groupNamePascalCase = collectionName + toPascalCase(groupName);
-			dartCode += '\n';
-			dartCode += `final class ${groupNamePascalCase} {\n`;
-			dartCode += `  const ${groupNamePascalCase}();\n`;
+			const groupClassName = `${collectionName}${toPascalCase(groupName)}`;
+			const groupInterfaceName = `I${groupClassName}`;
+			
+			dartCode += `\nfinal class ${groupClassName} implements ${groupInterfaceName} {\n`;
+			dartCode += `  const ${groupClassName}();\n`;
+			
 			groupedVariables[groupName].forEach((variable) => {
-				dartCode += generateDartCodeForVariable(variable, figmaVariables);
+				dartCode += generateDartCodeForVariable(variable, figmaVariables, modeId);
 			});
+			
 			dartCode += '}\n';
 		}
 	});
+	
 	return dartCode;
 }
 
@@ -253,11 +415,14 @@ function generateDartCodeForCollection(
  * @returns The corresponding Dart type as a string.
  */
 function getDartType(variableType: VariableResolvedDataType): string {
-	if (variableType === 'BOOLEAN') return 'bool';
-	if (variableType === 'COLOR') return 'Color';
-	if (variableType === 'FLOAT') return 'double';
-	if (variableType === 'STRING') return 'String';
-	throw new Error('Unknown variable type');
+	switch (variableType) {
+		case 'BOOLEAN': return 'bool';
+		case 'COLOR': return 'Color';
+		case 'FLOAT': return 'double';
+		case 'STRING': return 'String';
+		default:
+			throw new Error('Unknown variable type');
+	}
 }
 
 function isVariableAlias(value: any): value is VariableAlias {
@@ -265,3 +430,93 @@ function isVariableAlias(value: any): value is VariableAlias {
 		value && value.type === 'VARIABLE_ALIAS' && typeof value.id === 'string'
 	);
 }
+
+/**
+ * Generates the variables interface file `figma_variables_interface.dart`.
+ * @returns The generated interface file as a string.
+ */
+export function generateVariablesInterfaceFile(): string {
+	let dartFile = generateHeaderComment();
+	dartFile += "import 'dart:ui';\n\n";
+	
+	// Get all collections and their variables
+	const collections = figma.variables.getLocalVariableCollections();
+	const variables = figma.variables.getLocalVariables();
+	
+	// Generate interfaces for each collection
+	collections.forEach(collection => {
+		const collectionVariables = variables.filter(
+			variable => variable.variableCollectionId === collection.id
+		);
+		
+		if (collectionVariables.length > 0) {
+			dartFile += generateInterfacesForCollection(collection, collectionVariables);
+		}
+	});
+	
+	return dartFile;
+}
+
+/**
+ * Generates interfaces for a collection and its variable groups
+ */
+function generateInterfacesForCollection(
+	collection: VariableCollection,
+	variables: Variable[]
+): string {
+	let interfaceCode = '';
+	const collectionName = toPascalCase(collection.name);
+	
+	// Group variables by their group path
+	const groupedVariables = variables.reduce((groups: Record<string, Variable[]>, variable: Variable) => {
+		const parts = variable.name.split('/');
+		const groupName = parts.slice(0, -1).join('_') || '__root__';
+		if (!groups[groupName]) {
+			groups[groupName] = [];
+		}
+		groups[groupName].push(variable);
+		return groups;
+	}, {});
+	
+	// Generate main collection interface
+	interfaceCode += `abstract interface class I${collectionName} {\n`;
+	Object.keys(groupedVariables).forEach(groupName => {
+		if (groupName === '__root__') {
+			// Add root level variables directly to collection interface
+			groupedVariables[groupName].forEach(variable => {
+				const variableName = variable.name.split('/').pop();
+				if (variableName) {
+					const propertyName = toCamelCase(variableName);
+					interfaceCode += `  ${getDartType(variable.resolvedType)} get ${propertyName};\n`;
+				}
+			});
+		} else {
+			// Add group getter to collection interface
+			const groupInterfaceName = `I${collectionName}${toPascalCase(groupName)}`;
+			const groupPropertyName = toCamelCase(groupName);
+			interfaceCode += `  ${groupInterfaceName} get ${groupPropertyName};\n`;
+		}
+	});
+	interfaceCode += '}\n\n';
+	
+	// Generate interfaces for each group
+	Object.keys(groupedVariables).forEach(groupName => {
+		if (groupName !== '__root__') {
+			const groupInterfaceName = `I${collectionName}${toPascalCase(groupName)}`;
+			interfaceCode += `abstract interface class ${groupInterfaceName} {\n`;
+			
+			groupedVariables[groupName].forEach(variable => {
+				const variableName = variable.name.split('/').pop();
+				if (variableName) {
+					const propertyName = toCamelCase(variableName);
+					interfaceCode += `  ${getDartType(variable.resolvedType)} get ${propertyName};\n`;
+				}
+			});
+			
+			interfaceCode += '}\n\n';
+		}
+	});
+	
+	return interfaceCode;
+}
+

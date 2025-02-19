@@ -1,4 +1,33 @@
 /**
+ * Formats mode name to be used in file names
+ */
+export function formatModeNameForFile(modeName: string): string {
+	return modeName.toLowerCase()
+		.replace(/[^a-z0-9]/g, '_')
+		.replace(/_+/g, '_')
+		.replace(/^_|_$/g, '');
+}
+
+/**
+ * Formats mode name to be used in variable names (camelCase)
+ */
+export function formatModeNameForVariable(modeName: string): string {
+	// Remove special characters and spaces, keeping only letters and numbers
+	const cleanName = modeName.replace(/[^a-zA-Z0-9\s]/g, '');
+	
+	// Split by spaces and capitalize each word
+	const words = cleanName.split(/\s+/);
+	
+	// Convert to camelCase
+	return words.map((word, index) => {
+		if (index === 0) {
+			return word.toLowerCase();
+		}
+		return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+	}).join('');
+}
+
+/**
  * Converts a string to camelCase. Adds a prefix 'n' if the string starts with a digit.
  * @param str - The input string.
  * @returns The camelCase string.

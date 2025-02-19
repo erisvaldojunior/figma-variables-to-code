@@ -1,8 +1,8 @@
 /**
- * Generates the Dart utility function for `figma_utils.dart`.
- * @returns The generated Dart code as a string.
+ * Generates the Dart utility file `figma_utils.dart`.
+ * @returns The generated Dart file as a string.
  */
-export function generateUtilsDartCode(): string {
+export function generateUtilsFile(): string {
   let dartFile = generateHeaderComment();
   dartFile += generateDartUiImport();
   dartFile += '\n';
