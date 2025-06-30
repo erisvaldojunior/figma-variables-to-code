@@ -45,9 +45,13 @@ const DART_RESERVED_WORDS = [
  * @returns The camelCase string.
  */
 export function toCamelCase(str: string): string {
-	const convertedStr = removeSpacesAndConcatenate(str)
-		.replace(/[-_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
+	// Replace any sequence of non-alphanumeric characters with the capitalized letter that follows
+	const convertedStr = str.trim()
+		.replace(/[^a-zA-Z0-9]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
 		.replace(/^\d/, (chr) => `n${chr}`);
+	
+	// Ensure we have a valid string and make first character lowercase
+	if (!convertedStr) return 'empty';
 	let camelCaseStr = convertedStr[0].toLowerCase() + convertedStr.slice(1);
 	
 	// Check if the result is a Dart reserved word (case-insensitive)
