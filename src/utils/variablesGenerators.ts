@@ -189,7 +189,13 @@ function generateDartValueString(
 			const defaultValue = variableObject.valuesByMode[defaultModeId];
 			if (defaultValue) {
 				if (isVariableAlias(defaultValue)) {
-					const aliasVariable = figmaVariables.find(v => v.id === defaultValue.id);
+					let aliasVariable = null;
+					for (let i = 0; i < figmaVariables.length; i++) {
+						if (figmaVariables[i].id === defaultValue.id) {
+							aliasVariable = figmaVariables[i];
+							break;
+						}
+					}
 					if (aliasVariable) {
 						return {
 							valueContent: generateDartKeyString(aliasVariable),
@@ -214,12 +220,50 @@ function generateDartValueString(
 	}
 	
 	if (isVariableAlias(value)) {
-		const aliasVariable = figmaVariables.find(v => v.id === value.id);
+		let aliasVariable = null;
+		for (let i = 0; i < figmaVariables.length; i++) {
+			if (figmaVariables[i].id === value.id) {
+				aliasVariable = figmaVariables[i];
+				break;
+			}
+		}
 		if (aliasVariable) {
 			return {
 				valueContent: generateDartKeyString(aliasVariable),
 				valueType: 'alias',
 			};
+		} else {
+			// Handle case where alias variable is not found
+			console.warn(`Variable alias not found for ID: ${value.id}. Using fallback value.`);
+			
+			// Provide type-appropriate fallback based on the variable's resolved type
+			switch (variableObject.resolvedType) {
+				case 'COLOR':
+					return {
+						valueContent: 'Color(0xFF000000)', // Black fallback
+						valueType: 'color',
+					};
+				case 'FLOAT':
+					return {
+						valueContent: '0.0',
+						valueType: 'primitive',
+					};
+				case 'STRING':
+					return {
+						valueContent: "'missing-alias'",
+						valueType: 'primitive',
+					};
+				case 'BOOLEAN':
+					return {
+						valueContent: 'false',
+						valueType: 'primitive',
+					};
+				default:
+					return {
+						valueContent: '0',
+						valueType: 'primitive',
+					};
+			}
 		}
 	} else if (variableObject.resolvedType === 'COLOR') {
 		return {
@@ -234,7 +278,7 @@ function generateDartValueString(
 			value.toString() : 
 			typeof value === 'string' ? 
 				value : 
-				JSON.stringify(value),
+				String(value), // Use String() instead of JSON.stringify() for safer conversion
 		valueType: 'primitive',
 	};
 }
