@@ -1,3 +1,5 @@
+import { errorLogger } from './errorLogger';
+
 /**
  * Formats mode name to be used in file names
  */
@@ -45,6 +47,8 @@ const DART_RESERVED_WORDS = [
  * @returns The camelCase string.
  */
 export function toCamelCase(str: string): string {
+	const originalStr = str;
+	
 	// Replace any sequence of non-alphanumeric characters with the capitalized letter that follows
 	const convertedStr = str.trim()
 		.replace(/[^a-zA-Z0-9]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
@@ -56,7 +60,12 @@ export function toCamelCase(str: string): string {
 	
 	// Check if the result is a Dart reserved word (case-insensitive)
 	if (DART_RESERVED_WORDS.indexOf(camelCaseStr.toLowerCase()) !== -1) {
-		camelCaseStr = 'token' + camelCaseStr.charAt(0).toUpperCase() + camelCaseStr.slice(1);
+		const reservedWordResult = 'token' + camelCaseStr.charAt(0).toUpperCase() + camelCaseStr.slice(1);
+		// Only log if we're in a global context (errorLogger is available)
+		if (typeof errorLogger !== 'undefined') {
+			errorLogger.logReservedWord(originalStr, reservedWordResult);
+		}
+		camelCaseStr = reservedWordResult;
 	}
 	
 	return camelCaseStr;

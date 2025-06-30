@@ -3,6 +3,7 @@ import { rgbaObjectToDartHexaString } from './converters';
 import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
 import { getUniqueModes } from './variablesModes';
+import { errorLogger } from './errorLogger';
 
 type VariableValueType = {
 	valueContent: string;
@@ -201,6 +202,45 @@ function generateDartValueString(
 							valueContent: generateDartKeyString(aliasVariable),
 							valueType: 'alias',
 						};
+					} else {
+						// Handle case where alias variable is not found in default mode
+						console.warn(`Default mode variable alias not found for ID: ${defaultValue.id}. Using fallback value.`);
+						
+						// Log the missing alias error
+						const fallbackValue = variableObject.resolvedType === 'COLOR' ? 'Color(0xFF000000)' : 
+							variableObject.resolvedType === 'FLOAT' ? '0.0' : 
+							variableObject.resolvedType === 'STRING' ? "'missing-alias'" : 
+							variableObject.resolvedType === 'BOOLEAN' ? 'false' : '0';
+						errorLogger.logMissingAlias(variable.name, defaultValue.id, fallbackValue);
+						
+						// Provide type-appropriate fallback based on the variable's resolved type
+						switch (variableObject.resolvedType) {
+							case 'COLOR':
+								return {
+									valueContent: 'Color(0xFF000000)', // Black fallback
+									valueType: 'color',
+								};
+							case 'FLOAT':
+								return {
+									valueContent: '0.0',
+									valueType: 'primitive',
+								};
+							case 'STRING':
+								return {
+									valueContent: "'missing-alias'",
+									valueType: 'primitive',
+								};
+							case 'BOOLEAN':
+								return {
+									valueContent: 'false',
+									valueType: 'primitive',
+								};
+							default:
+								return {
+									valueContent: '0',
+									valueType: 'primitive',
+								};
+						}
 					}
 				} else if (variableObject.resolvedType === 'COLOR') {
 					return {
@@ -208,9 +248,13 @@ function generateDartValueString(
 						valueType: 'color',
 					};
 				}
-				// For primitive values, use JSON.stringify
+				// For primitive values, use String() for safer conversion
 				return {
-					valueContent: JSON.stringify(defaultValue),
+					valueContent: typeof defaultValue === 'number' ? 
+						defaultValue.toString() : 
+						typeof defaultValue === 'string' ? 
+							defaultValue : 
+							String(defaultValue),
 					valueType: 'primitive',
 				};
 			}
@@ -235,6 +279,13 @@ function generateDartValueString(
 		} else {
 			// Handle case where alias variable is not found
 			console.warn(`Variable alias not found for ID: ${value.id}. Using fallback value.`);
+			
+			// Log the missing alias error
+			const fallbackValue = variableObject.resolvedType === 'COLOR' ? 'Color(0xFF000000)' : 
+				variableObject.resolvedType === 'FLOAT' ? '0.0' : 
+				variableObject.resolvedType === 'STRING' ? "'missing-alias'" : 
+				variableObject.resolvedType === 'BOOLEAN' ? 'false' : '0';
+			errorLogger.logMissingAlias(variable.name, value.id, fallbackValue);
 			
 			// Provide type-appropriate fallback based on the variable's resolved type
 			switch (variableObject.resolvedType) {

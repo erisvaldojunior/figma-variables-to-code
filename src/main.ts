@@ -2,12 +2,16 @@ import { showUI } from '@create-figma-plugin/utilities';
 import { generateVariablesFile, generateVariablesModesFiles, generateVariablesInterfaceFile } from './utils/variablesGenerators';
 import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile } from './utils/stylesGenerators';
 import { generateUtilsFile } from './utils/utilsGenerators';
+import { errorLogger } from './utils/errorLogger';
 
 export default function () {
   showUI({
     height: 480,
     width: 800,
   });
+
+  /* Clear previous error log */
+  errorLogger.clear();
 
   /* Prepare variables for code generation */
   const variablesFile = generateVariablesFile();
@@ -22,6 +26,10 @@ export default function () {
   /* Prepare utils for code generation */
   const utilsFile = generateUtilsFile();
   
+  /* Get error log */
+  const errorLog = errorLogger.generateLogText();
+  const errorCount = errorLogger.getErrorCount();
+  
   /* Sends to the UI the code generation */
   figma.ui.postMessage({
     files: {
@@ -33,6 +41,8 @@ export default function () {
       stylesInterfaceFile,
       utilsFile
     },
+    errorLog,
+    errorCount
   });
 
   /* Catches event when code copied to clipboard and notify the user */
