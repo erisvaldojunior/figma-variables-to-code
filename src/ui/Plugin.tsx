@@ -2,6 +2,7 @@ import { render } from '@create-figma-plugin/ui';
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import '!../css/output.css';
+const JSZip = require('jszip');
 
 import GitHubModal from './GitHubModal';
 import highlightCode from '../utils/highlightCode';
@@ -46,32 +47,120 @@ function Plugin() {
       // Handle variables modes files
       if (receivedFiles.variablesModesFiles) {
         const newModesCodes: Record<string, string> = {};
-        Object.entries(receivedFiles.variablesModesFiles).forEach(([modeName, code]) => {
-          highlightCode(code as string, (highlighted) => {
-            newModesCodes[modeName] = highlighted;
-          });
-        });
+        for (const modeName in receivedFiles.variablesModesFiles) {
+          if (receivedFiles.variablesModesFiles.hasOwnProperty(modeName)) {
+            const code = receivedFiles.variablesModesFiles[modeName];
+            highlightCode(code as string, (highlighted) => {
+              newModesCodes[modeName] = highlighted;
+            });
+          }
+        }
         setVariablesModesCodes(newModesCodes);
       }
 
       // Handle styles modes files
       if (receivedFiles.stylesModesFiles) {
         const newModesCodes: Record<string, string> = {};
-        Object.entries(receivedFiles.stylesModesFiles).forEach(([modeName, code]) => {
-          highlightCode(code as string, (highlighted) => {
-            newModesCodes[modeName] = highlighted;
-          });
-        });
+        for (const modeName in receivedFiles.stylesModesFiles) {
+          if (receivedFiles.stylesModesFiles.hasOwnProperty(modeName)) {
+            const code = receivedFiles.stylesModesFiles[modeName];
+            highlightCode(code as string, (highlighted) => {
+              newModesCodes[modeName] = highlighted;
+            });
+          }
+        }
         setStylesModesCodes(newModesCodes);
       }
     };
   }, []);
 
+  const downloadAllFiles = async () => {
+    const parser = new DOMParser();
+    
+    // Helper function to extract plain text from highlighted code
+    const extractPlainText = (highlightedCode: string): string => {
+      const doc = parser.parseFromString(highlightedCode, 'text/html');
+      return doc.body.textContent || '';
+    };
+
+    try {
+      // Create a new JSZip instance
+      const zip = new JSZip();
+
+      // Add all main files to ZIP
+      if (highlightedVariablesInterfaceCode) {
+        zip.file('figma_variables_interface.dart', extractPlainText(highlightedVariablesInterfaceCode));
+      }
+      
+      if (highlightedCode) {
+        zip.file('figma_variables.dart', extractPlainText(highlightedCode));
+      }
+      
+      if (highlightedStylesInterfaceCode) {
+        zip.file('figma_styles_interface.dart', extractPlainText(highlightedStylesInterfaceCode));
+      }
+      
+      if (highlightedStylesCode) {
+        zip.file('figma_styles.dart', extractPlainText(highlightedStylesCode));
+      }
+      
+      if (highlightedUtilsCode) {
+        zip.file('figma_utils.dart', extractPlainText(highlightedUtilsCode));
+      }
+
+      // Add variables mode files to ZIP
+      for (const modeName in variablesModesCodes) {
+        if (variablesModesCodes.hasOwnProperty(modeName)) {
+          const code = variablesModesCodes[modeName];
+          if (code) {
+            zip.file(`figma_variables_${modeName}.dart`, extractPlainText(code));
+          }
+        }
+      }
+
+      // Add styles mode files to ZIP
+      for (const modeName in stylesModesCodes) {
+        if (stylesModesCodes.hasOwnProperty(modeName)) {
+          const code = stylesModesCodes[modeName];
+          if (code) {
+            zip.file(`figma_styles_${modeName}.dart`, extractPlainText(code));
+          }
+        }
+      }
+
+      // Generate ZIP file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+      // Download the ZIP file
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'figma-dart-files.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Show notification
+      parent.postMessage({ pluginMessage: { type: 'files-downloaded' } }, '*');
+    } catch (error) {
+      console.error('Error creating ZIP file:', error);
+      // Fallback notification
+      parent.postMessage({ pluginMessage: { type: 'download-error' } }, '*');
+    }
+  };
+
   return (
     <div class="p-4 bg-gray-900 text-white">
       <div class="flex justify-center mb-4">
         <button
-          class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+          class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black ml-2"
+          onClick={downloadAllFiles}
+        >
+          Download ZIP File
+        </button>
+        <button
+          class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black ml-2"
           onClick={() => setShowGitHubModal(true)}
         >
           Sync with GitHub
@@ -192,50 +281,68 @@ function Plugin() {
       ></pre>
 
       {/* Render each variable mode code block */}
-      {Object.entries(variablesModesCodes).map(([modeName, code]) => (
-        <div key={modeName}>
-          <div class="flex justify-between items-center">
-            <h2 class="text-lg font-semibold">
-              figma_variables_{modeName}.dart
-            </h2>
-            <div>
-              <button
-                class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
-                onClick={() => copyToClipboard(code)}
-              >
-                Copy to Clipboard
-              </button>
-            </div>
-          </div>
-          <pre
-            class="p-4 rounded"
-            dangerouslySetInnerHTML={{ __html: code }}
-          ></pre>
-        </div>
-      ))}
+      {(() => {
+        const variableModeBlocks = [];
+        for (const modeName in variablesModesCodes) {
+          if (variablesModesCodes.hasOwnProperty(modeName)) {
+            const code = variablesModesCodes[modeName];
+            variableModeBlocks.push(
+              <div key={modeName}>
+                <div class="flex justify-between items-center">
+                  <h2 class="text-lg font-semibold">
+                    figma_variables_{modeName}.dart
+                  </h2>
+                  <div>
+                    <button
+                      class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+                      onClick={() => copyToClipboard(code)}
+                    >
+                      Copy to Clipboard
+                    </button>
+                  </div>
+                </div>
+                <pre
+                  class="p-4 rounded"
+                  dangerouslySetInnerHTML={{ __html: code }}
+                ></pre>
+              </div>
+            );
+          }
+        }
+        return variableModeBlocks;
+      })()}
 
       {/* Render each style mode code block */}
-      {Object.entries(stylesModesCodes).map(([modeName, code]) => (
-        <div key={modeName}>
-          <div class="flex justify-between items-center">
-            <h2 class="text-lg font-semibold">
-              figma_styles_{modeName}.dart
-            </h2>
-            <div>
-              <button
-                class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
-                onClick={() => copyToClipboard(code)}
-              >
-                Copy to Clipboard
-              </button>
-            </div>
-          </div>
-          <pre
-            class="p-4 rounded"
-            dangerouslySetInnerHTML={{ __html: code }}
-          ></pre>
-        </div>
-      ))}
+      {(() => {
+        const styleModeBlocks = [];
+        for (const modeName in stylesModesCodes) {
+          if (stylesModesCodes.hasOwnProperty(modeName)) {
+            const code = stylesModesCodes[modeName];
+            styleModeBlocks.push(
+              <div key={modeName}>
+                <div class="flex justify-between items-center">
+                  <h2 class="text-lg font-semibold">
+                    figma_styles_{modeName}.dart
+                  </h2>
+                  <div>
+                    <button
+                      class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+                      onClick={() => copyToClipboard(code)}
+                    >
+                      Copy to Clipboard
+                    </button>
+                  </div>
+                </div>
+                <pre
+                  class="p-4 rounded"
+                  dangerouslySetInnerHTML={{ __html: code }}
+                ></pre>
+              </div>
+            );
+          }
+        }
+        return styleModeBlocks;
+      })()}
 
       {showGitHubModal && (
         <GitHubModal

@@ -92,15 +92,22 @@ export function generateStylesInterfaceFile(): string {
   // Generate base interface for text styles
   dartFile += '// Base interface for text styles across all modes\n';
   dartFile += 'abstract interface class ITextStyles {\n';
-  dartFile += '  IDisplay get display;\n';
-  dartFile += '  ITitle get title;\n';
-  dartFile += '  IBody get body;\n';
-  dartFile += '  ILabel get label;\n';
-  dartFile += '}\n\n';
   
-  // Generate interfaces for each style group
+  // Generate dynamic interface based on actual text styles
   const textStyles = figma.getLocalTextStyles();
   const groupedStyles = groupTextStyles(textStyles);
+  
+  Object.keys(groupedStyles).forEach(groupName => {
+    if (groupName !== '__root__') {
+      const groupNameCamelCase = toCamelCase(groupName);
+      const groupNamePascalCase = toPascalCase(groupName);
+      dartFile += `  I${groupNamePascalCase} get ${groupNameCamelCase};\n`;
+    }
+  });
+  
+  dartFile += '}\n\n';
+  
+  // Generate interfaces for each style group (reuse existing variables)
   
   Object.keys(groupedStyles).forEach(groupName => {
     const interfaceName = `I${toPascalCase(groupName)}`;
@@ -309,9 +316,14 @@ function generateVariableReference(variable: Variable | null) {
   if (variable) {
     const parts = variable.name.split('/');
 
-    const collection = figma.variables
-		.getLocalVariableCollections()
-		.find((collection) => collection.id === variable.variableCollectionId);
+    const collections = figma.variables.getLocalVariableCollections();
+    let collection = null;
+    for (let i = 0; i < collections.length; i++) {
+      if (collections[i].id === variable.variableCollectionId) {
+        collection = collections[i];
+        break;
+      }
+    }
     let referenceParts;
     if (collection) {
       const collectionName = toCamelCase(collection.name);

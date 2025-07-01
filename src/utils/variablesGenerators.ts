@@ -171,7 +171,13 @@ function generateDartValueString(
 	modeId: string
 ): VariableValueType {
 	const variableId = variable.id;
-	const variableObject = figmaVariables.find((obj) => obj.id === variableId);
+	let variableObject = null;
+	for (let i = 0; i < figmaVariables.length; i++) {
+		if (figmaVariables[i].id === variableId) {
+			variableObject = figmaVariables[i];
+			break;
+		}
+	}
 	
 	if (!variableObject) {
 		return { valueContent: '0', valueType: 'primitive' };
@@ -181,10 +187,14 @@ function generateDartValueString(
 	
 	if (!value) {
 		// If there's no value for this mode, use the default mode value
-		const defaultModeId = figma.variables
-			.getLocalVariableCollections()
-			.find(c => c.id === variableObject.variableCollectionId)
-			?.defaultModeId;
+		const collections = figma.variables.getLocalVariableCollections();
+		let defaultModeId = null;
+		for (let i = 0; i < collections.length; i++) {
+			if (collections[i].id === variableObject.variableCollectionId) {
+				defaultModeId = collections[i].defaultModeId;
+				break;
+			}
+		}
 			
 		if (defaultModeId) {
 			const defaultValue = variableObject.valuesByMode[defaultModeId];
@@ -248,13 +258,18 @@ function generateDartValueString(
 						valueType: 'color',
 					};
 				}
-				// For primitive values, use String() for safer conversion
+				// For primitive values, ensure STRING types are quoted
+				if (variableObject.resolvedType === 'STRING') {
+					return {
+						valueContent: typeof defaultValue === 'string' ? `'${defaultValue}'` : `'${String(defaultValue)}'`,
+						valueType: 'primitive',
+					};
+				}
+				
 				return {
 					valueContent: typeof defaultValue === 'number' ? 
 						defaultValue.toString() : 
-						typeof defaultValue === 'string' ? 
-							defaultValue : 
-							String(defaultValue),
+						String(defaultValue),
 					valueType: 'primitive',
 				};
 			}
@@ -324,12 +339,17 @@ function generateDartValueString(
 	}
 	
 	// For primitive values, convert number to string directly
+	if (variableObject.resolvedType === 'STRING') {
+		return {
+			valueContent: typeof value === 'string' ? `'${value}'` : `'${String(value)}'`,
+			valueType: 'primitive',
+		};
+	}
+	
 	return {
 		valueContent: typeof value === 'number' ? 
 			value.toString() : 
-			typeof value === 'string' ? 
-				value : 
-				String(value), // Use String() instead of JSON.stringify() for safer conversion
+			String(value),
 		valueType: 'primitive',
 	};
 }
@@ -349,9 +369,14 @@ function generateDartKeyString(variable: Variable): string {
 		transformedVariableName += capitalizedPart;
 	}
 	// Generate the full path based on the collection and groups
-	const collection = figma.variables
-		.getLocalVariableCollections()
-		.find((collection) => collection.id === variable.variableCollectionId);
+	const collections = figma.variables.getLocalVariableCollections();
+	let collection = null;
+	for (let i = 0; i < collections.length; i++) {
+		if (collections[i].id === variable.variableCollectionId) {
+			collection = collections[i];
+			break;
+		}
+	}
 	if (!collection) return transformedVariableName;
 	const collectionName = toPascalCase(collection.name);
 	const groupPath = parts.slice(0, -1);
@@ -410,7 +435,12 @@ function generateDartCodeForVariable(
 	let doubleKeyPlusSpace = '';
 	let value = valueContent;
 	if (resolvedType === 'STRING') {
-		value = toSingleQuotes(valueContent);
+		// Ensure string values are properly quoted
+		if (valueContent.charAt(0) !== "'" && valueContent.charAt(0) !== '"') {
+			value = `'${valueContent}'`;
+		} else {
+			value = toSingleQuotes(valueContent);
+		}
 	} else if (resolvedType === 'FLOAT') {
 		doubleKeyPlusSpace = 'double ';
 	}

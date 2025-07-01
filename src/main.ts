@@ -49,6 +49,10 @@ export default function () {
   figma.ui.onmessage = (message) => {
     if (message.type === 'code-copied-dart') {
       figma.notify('Dart code successfully copied to clipboard');
+    } else if (message.type === 'files-downloaded') {
+      figma.notify('All Dart files successfully downloaded');
+    } else if (message.type === 'download-error') {
+      figma.notify('Error downloading files. Please try again.');
     } else if (message.type === 'saveSettings') {
       // Save settings to clientStorage
       figma.clientStorage.setAsync('githubUsername', message.username);
