@@ -2,6 +2,7 @@ import { formatLine } from './dartFormat';
 import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase } from './string';
 import { generateHeaderComment } from './utilsGenerators';
 import { getUniqueModes } from './variablesModes';
+import { rgbaObjectToDartHexaString } from './converters';
 
 type TextStyleBoundVariable = {
   id: string;
@@ -79,6 +80,170 @@ export function generateStylesFile(): string {
   });
   
   return dartFile;
+}
+
+/**
+ * Generates the Dart file `figma_paint_styles.dart`.
+ * @returns The generated Dart file as a string.
+ */
+export function generatePaintStylesFile(): string {
+  const paintStyles = figma.getLocalPaintStyles();
+  let dartFile = generateHeaderComment();
+  dartFile += `import 'dart:ui';\n`;
+  dartFile += `import 'figma_paint_styles_interface.dart';\n\n`;
+  
+  // Expose paint styles directly (no modes needed for paint styles)
+  dartFile += `const paintStyles = PaintStyles();\n\n`;
+  
+  // Make PaintStyles implement IPaintStyles
+  dartFile += `final class PaintStyles implements IPaintStyles {\n`;
+  dartFile += `  const PaintStyles();\n`;
+  
+  const groupedPaintStyles = groupPaintStyles(paintStyles);
+  
+  // Handle root level paint styles
+  if (groupedPaintStyles['__root__']) {
+    groupedPaintStyles['__root__'].forEach((style) => {
+      dartFile += generatePaintStyleDartCode(style);
+    });
+  }
+  
+  // Handle grouped paint styles
+  Object.keys(groupedPaintStyles).forEach((groupName) => {
+    if (groupName !== '__root__') {
+      const groupNameCamelCase = toCamelCase(groupName);
+      const groupNamePascalCase = toPascalCase(groupName);
+      dartFile += `\n`;
+      dartFile += `  static const _${groupNameCamelCase} = ${groupNamePascalCase}();\n`;
+      dartFile += `  @override\n`;
+      dartFile += `  I${groupNamePascalCase} get ${groupNameCamelCase} => _${groupNameCamelCase};\n`;
+    }
+  });
+  dartFile += `}\n`;
+  
+  // Make each style group implement its interface
+  Object.keys(groupedPaintStyles).forEach((groupName) => {
+    if (groupName !== '__root__') {
+      const groupClassName = toPascalCase(groupName);
+      dartFile += `\n`;
+      dartFile += `final class ${groupClassName} implements I${groupClassName} {\n`;
+      dartFile += `  const ${groupClassName}();\n`;
+      groupedPaintStyles[groupName].forEach((style) => {
+        dartFile += generatePaintStyleDartCode(style);
+      });
+      dartFile += `}\n`;
+    }
+  });
+  
+  return dartFile;
+}
+
+/**
+ * Generates the paint styles interface file `figma_paint_styles_interface.dart`.
+ * @returns The generated interface file as a string.
+ */
+export function generatePaintStylesInterfaceFile(): string {
+  let dartFile = generateHeaderComment();
+  dartFile += `import 'dart:ui';\n\n`;
+  
+  // Generate base interface for paint styles
+  dartFile += '// Base interface for paint styles\n';
+  dartFile += 'abstract interface class IPaintStyles {\n';
+  
+  // Generate dynamic interface based on actual paint styles
+  const paintStyles = figma.getLocalPaintStyles();
+  const groupedStyles = groupPaintStyles(paintStyles);
+  
+  Object.keys(groupedStyles).forEach(groupName => {
+    if (groupName !== '__root__') {
+      const groupNameCamelCase = toCamelCase(groupName);
+      const groupNamePascalCase = toPascalCase(groupName);
+      dartFile += `  I${groupNamePascalCase} get ${groupNameCamelCase};\n`;
+    } else {
+      // Add root level paint styles directly to interface
+      groupedStyles[groupName].forEach(style => {
+        const styleName = style.name.split('/').pop();
+        if (styleName) {
+          const propertyName = toCamelCase(styleName);
+          dartFile += `  Color get ${propertyName};\n`;
+        }
+      });
+    }
+  });
+  
+  dartFile += '}\n\n';
+  
+  // Generate interfaces for each style group
+  Object.keys(groupedStyles).forEach(groupName => {
+    if (groupName !== '__root__') {
+      const interfaceName = `I${toPascalCase(groupName)}`;
+      dartFile += `abstract interface class ${interfaceName} {\n`;
+      
+      groupedStyles[groupName].forEach(style => {
+        const styleName = style.name.split('/').pop();
+        if (styleName) {
+          const propertyName = toCamelCase(styleName);
+          dartFile += `  Color get ${propertyName};\n`;
+        }
+      });
+      
+      dartFile += '}\n\n';
+    }
+  });
+  
+  return dartFile;
+}
+
+/**
+ * Groups paint styles by their hierarchical name.
+ * @param paintStyles - The list of paint styles.
+ * @returns An object with grouped paint styles.
+ */
+function groupPaintStyles(paintStyles: PaintStyle[]): Record<string, PaintStyle[]> {
+  return paintStyles.reduce((groups: Record<string, PaintStyle[]>, style: PaintStyle) => {
+    const parts = style.name.split('/');
+    const groupName = parts.slice(0, -1).join('_') || '__root__';
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(style);
+    return groups;
+  }, {});
+}
+
+/**
+ * Generates Dart code for an individual paint style.
+ * @param style - The paint style to generate code for.
+ * @returns The generated Dart code as a string.
+ */
+function generatePaintStyleDartCode(style: PaintStyle): string {
+  const styleName = style.name.split('/').pop();
+  let dartCode = `\n`;
+
+  if (styleName) {
+    const styleNameCamelCase = toCamelCase(styleName);
+    
+    // Get the color from the first paint in the paints array
+    let colorValue = 'Color(0xFF000000)'; // Default black
+    
+    if (style.paints && style.paints.length > 0) {
+      const firstPaint = style.paints[0];
+      if (firstPaint.type === 'SOLID' && firstPaint.color) {
+        colorValue = rgbaObjectToDartHexaString({
+          r: firstPaint.color.r,
+          g: firstPaint.color.g,
+          b: firstPaint.color.b,
+          a: firstPaint.opacity || 1
+        });
+      }
+    }
+    
+    dartCode += `  static const _${styleNameCamelCase} = ${colorValue};\n`;
+    dartCode += `  @override\n`;
+    dartCode += `  Color get ${styleNameCamelCase} => _${styleNameCamelCase};\n`;  
+  }
+
+  return dartCode;
 }
 
 /**

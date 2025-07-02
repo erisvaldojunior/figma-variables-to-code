@@ -1,6 +1,6 @@
 import { showUI } from '@create-figma-plugin/utilities';
 import { generateVariablesFile, generateVariablesModesFiles, generateVariablesInterfaceFile } from './utils/variablesGenerators';
-import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile } from './utils/stylesGenerators';
+import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile, generatePaintStylesFile, generatePaintStylesInterfaceFile } from './utils/stylesGenerators';
 import { generateUtilsFile } from './utils/utilsGenerators';
 import { errorLogger } from './utils/errorLogger';
 
@@ -23,6 +23,10 @@ export default function () {
   const stylesModesFiles = generateStylesModesFiles();
   const stylesInterfaceFile = generateStylesInterfaceFile();
 
+  /* Prepare paint styles for code generation */
+  const paintStylesFile = generatePaintStylesFile();
+  const paintStylesInterfaceFile = generatePaintStylesInterfaceFile();
+
   /* Prepare utils for code generation */
   const utilsFile = generateUtilsFile();
   
@@ -39,6 +43,8 @@ export default function () {
       stylesFile,
       stylesModesFiles,
       stylesInterfaceFile,
+      paintStylesFile,
+      paintStylesInterfaceFile,
       utilsFile
     },
     errorLog,

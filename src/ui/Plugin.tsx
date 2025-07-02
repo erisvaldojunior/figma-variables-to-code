@@ -14,6 +14,8 @@ function Plugin() {
   const [highlightedUtilsCode, setHighlightedUtilsCode] = useState('');
   const [highlightedStylesInterfaceCode, setHighlightedStylesInterfaceCode] = useState('');
   const [highlightedVariablesInterfaceCode, setHighlightedVariablesInterfaceCode] = useState('');
+  const [highlightedPaintStylesCode, setHighlightedPaintStylesCode] = useState('');
+  const [highlightedPaintStylesInterfaceCode, setHighlightedPaintStylesInterfaceCode] = useState('');
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [stylesModesCodes, setStylesModesCodes] = useState<Record<string, string>>({});
   const [variablesModesCodes, setVariablesModesCodes] = useState<Record<string, string>>({});
@@ -42,6 +44,12 @@ function Plugin() {
       }
       if (receivedFiles.variablesInterfaceFile) {
         highlightCode(receivedFiles.variablesInterfaceFile, setHighlightedVariablesInterfaceCode);
+      }
+      if (receivedFiles.paintStylesFile) {
+        highlightCode(receivedFiles.paintStylesFile, setHighlightedPaintStylesCode);
+      }
+      if (receivedFiles.paintStylesInterfaceFile) {
+        highlightCode(receivedFiles.paintStylesInterfaceFile, setHighlightedPaintStylesInterfaceCode);
       }
       
       // Handle variables modes files
@@ -102,6 +110,14 @@ function Plugin() {
       
       if (highlightedStylesCode) {
         zip.file('figma_styles.dart', extractPlainText(highlightedStylesCode));
+      }
+
+      if (highlightedPaintStylesInterfaceCode) {
+        zip.file('figma_paint_styles_interface.dart', extractPlainText(highlightedPaintStylesInterfaceCode));
+      }
+
+      if (highlightedPaintStylesCode) {
+        zip.file('figma_paint_styles.dart', extractPlainText(highlightedPaintStylesCode));
       }
       
       if (highlightedUtilsCode) {
@@ -263,6 +279,40 @@ function Plugin() {
         dangerouslySetInnerHTML={{ __html: highlightedStylesCode }}
       ></pre>
 
+      {/* Paint Styles Interface */}
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_paint_styles_interface.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedPaintStylesInterfaceCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedPaintStylesInterfaceCode }}
+      ></pre>
+
+      {/* Paint Styles */}
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">figma_paint_styles.dart</h2>
+        <div>
+          <button
+            class="px-4 py-2 text-sm bg-gray-800 rounded hover:bg-white hover:text-black"
+            onClick={() => copyToClipboard(highlightedPaintStylesCode)}
+          >
+            Copy to Clipboard
+          </button>
+        </div>
+      </div>
+      <pre
+        class="p-4 rounded"
+        dangerouslySetInnerHTML={{ __html: highlightedPaintStylesCode }}
+      ></pre>
+
       {/* Utils */}
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold">figma_utils.dart</h2>
@@ -351,6 +401,8 @@ function Plugin() {
           highlightedUtilsCode={highlightedUtilsCode}
           highlightedStylesInterfaceCode={highlightedStylesInterfaceCode}
           highlightedVariablesInterfaceCode={highlightedVariablesInterfaceCode}
+          highlightedPaintStylesCode={highlightedPaintStylesCode}
+          highlightedPaintStylesInterfaceCode={highlightedPaintStylesInterfaceCode}
           stylesModesCodes={stylesModesCodes}
           variablesModesCodes={variablesModesCodes}
           onClose={() => setShowGitHubModal(false)}
