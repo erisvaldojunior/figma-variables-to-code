@@ -1,5 +1,22 @@
 # Figma Variables to Code
 
+A Figma plugin that automatically converts design variables and text styles into ready-to-use Dart code for Flutter applications. Generate type-safe, mode-aware design tokens with seamless GitHub integration.
+
+## Features
+
+- 🎨 **Variable Conversion**: Transform Figma variables (colors, numbers, strings, booleans) into Dart constants
+- 📝 **Text Style Generation**: Convert text styles to Flutter TextStyle objects with variable binding support
+- 🌙 **Multi-Mode Support**: Automatic handling of light/dark themes and other design modes
+- 🔒 **Type Safety**: Generated interfaces ensure compile-time safety across all modes
+- 🐙 **GitHub Integration**: Direct sync to repositories with automatic PR creation
+- ⚡ **Live Updates**: Real-time code generation as you modify designs in Figma
+
+## Documentation
+
+- **[📚 API Documentation](./API_DOCUMENTATION.md)** - Comprehensive guide to all APIs, functions, and components
+- **[🚀 Usage Examples](./API_DOCUMENTATION.md#usage-examples)** - How to use generated code in Flutter apps
+- **[🔧 GitHub Integration](./API_DOCUMENTATION.md#github-integration)** - Setting up automatic repository sync
+
 ## Development guide
 
 *This plugin is built with [Create Figma Plugin](https://yuanqing.github.io/create-figma-plugin/).*
