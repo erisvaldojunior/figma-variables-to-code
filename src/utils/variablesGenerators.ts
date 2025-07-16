@@ -3,6 +3,7 @@ import { rgbaObjectToDartHexaString } from './converters';
 import { formatModeNameForFile, formatModeNameForVariable, toCamelCase, toPascalCase, toSingleQuotes } from './string';
 import { generateHeaderComment } from './utilsGenerators';
 import { getUniqueModes } from './variablesModes';
+import { errorLogger } from './errorLogger';
 
 type VariableValueType = {
 	valueContent: string;
@@ -170,7 +171,13 @@ function generateDartValueString(
 	modeId: string
 ): VariableValueType {
 	const variableId = variable.id;
-	const variableObject = figmaVariables.find((obj) => obj.id === variableId);
+	let variableObject = null;
+	for (let i = 0; i < figmaVariables.length; i++) {
+		if (figmaVariables[i].id === variableId) {
+			variableObject = figmaVariables[i];
+			break;
+		}
+	}
 	
 	if (!variableObject) {
 		return { valueContent: '0', valueType: 'primitive' };
@@ -180,21 +187,70 @@ function generateDartValueString(
 	
 	if (!value) {
 		// If there's no value for this mode, use the default mode value
-		const defaultModeId = figma.variables
-			.getLocalVariableCollections()
-			.find(c => c.id === variableObject.variableCollectionId)
-			?.defaultModeId;
+		const collections = figma.variables.getLocalVariableCollections();
+		let defaultModeId = null;
+		for (let i = 0; i < collections.length; i++) {
+			if (collections[i].id === variableObject.variableCollectionId) {
+				defaultModeId = collections[i].defaultModeId;
+				break;
+			}
+		}
 			
 		if (defaultModeId) {
 			const defaultValue = variableObject.valuesByMode[defaultModeId];
 			if (defaultValue) {
 				if (isVariableAlias(defaultValue)) {
-					const aliasVariable = figmaVariables.find(v => v.id === defaultValue.id);
+					let aliasVariable = null;
+					for (let i = 0; i < figmaVariables.length; i++) {
+						if (figmaVariables[i].id === defaultValue.id) {
+							aliasVariable = figmaVariables[i];
+							break;
+						}
+					}
 					if (aliasVariable) {
 						return {
 							valueContent: generateDartKeyString(aliasVariable),
 							valueType: 'alias',
 						};
+					} else {
+						// Handle case where alias variable is not found in default mode
+						console.warn(`Default mode variable alias not found for ID: ${defaultValue.id}. Using fallback value.`);
+						
+						// Log the missing alias error
+						const fallbackValue = variableObject.resolvedType === 'COLOR' ? 'Color(0xFF000000)' : 
+							variableObject.resolvedType === 'FLOAT' ? '0.0' : 
+							variableObject.resolvedType === 'STRING' ? "'missing-alias'" : 
+							variableObject.resolvedType === 'BOOLEAN' ? 'false' : '0';
+						errorLogger.logMissingAlias(variable.name, defaultValue.id, fallbackValue);
+						
+						// Provide type-appropriate fallback based on the variable's resolved type
+						switch (variableObject.resolvedType) {
+							case 'COLOR':
+								return {
+									valueContent: 'Color(0xFF000000)', // Black fallback
+									valueType: 'color',
+								};
+							case 'FLOAT':
+								return {
+									valueContent: '0.0',
+									valueType: 'primitive',
+								};
+							case 'STRING':
+								return {
+									valueContent: "'missing-alias'",
+									valueType: 'primitive',
+								};
+							case 'BOOLEAN':
+								return {
+									valueContent: 'false',
+									valueType: 'primitive',
+								};
+							default:
+								return {
+									valueContent: '0',
+									valueType: 'primitive',
+								};
+						}
 					}
 				} else if (variableObject.resolvedType === 'COLOR') {
 					return {
@@ -202,9 +258,18 @@ function generateDartValueString(
 						valueType: 'color',
 					};
 				}
-				// For primitive values, use JSON.stringify
+				// For primitive values, ensure STRING types are quoted
+				if (variableObject.resolvedType === 'STRING') {
+					return {
+						valueContent: typeof defaultValue === 'string' ? `'${defaultValue}'` : `'${String(defaultValue)}'`,
+						valueType: 'primitive',
+					};
+				}
+				
 				return {
-					valueContent: JSON.stringify(defaultValue),
+					valueContent: typeof defaultValue === 'number' ? 
+						defaultValue.toString() : 
+						String(defaultValue),
 					valueType: 'primitive',
 				};
 			}
@@ -214,12 +279,57 @@ function generateDartValueString(
 	}
 	
 	if (isVariableAlias(value)) {
-		const aliasVariable = figmaVariables.find(v => v.id === value.id);
+		let aliasVariable = null;
+		for (let i = 0; i < figmaVariables.length; i++) {
+			if (figmaVariables[i].id === value.id) {
+				aliasVariable = figmaVariables[i];
+				break;
+			}
+		}
 		if (aliasVariable) {
 			return {
 				valueContent: generateDartKeyString(aliasVariable),
 				valueType: 'alias',
 			};
+		} else {
+			// Handle case where alias variable is not found
+			console.warn(`Variable alias not found for ID: ${value.id}. Using fallback value.`);
+			
+			// Log the missing alias error
+			const fallbackValue = variableObject.resolvedType === 'COLOR' ? 'Color(0xFF000000)' : 
+				variableObject.resolvedType === 'FLOAT' ? '0.0' : 
+				variableObject.resolvedType === 'STRING' ? "'missing-alias'" : 
+				variableObject.resolvedType === 'BOOLEAN' ? 'false' : '0';
+			errorLogger.logMissingAlias(variable.name, value.id, fallbackValue);
+			
+			// Provide type-appropriate fallback based on the variable's resolved type
+			switch (variableObject.resolvedType) {
+				case 'COLOR':
+					return {
+						valueContent: 'Color(0xFF000000)', // Black fallback
+						valueType: 'color',
+					};
+				case 'FLOAT':
+					return {
+						valueContent: '0.0',
+						valueType: 'primitive',
+					};
+				case 'STRING':
+					return {
+						valueContent: "'missing-alias'",
+						valueType: 'primitive',
+					};
+				case 'BOOLEAN':
+					return {
+						valueContent: 'false',
+						valueType: 'primitive',
+					};
+				default:
+					return {
+						valueContent: '0',
+						valueType: 'primitive',
+					};
+			}
 		}
 	} else if (variableObject.resolvedType === 'COLOR') {
 		return {
@@ -229,12 +339,17 @@ function generateDartValueString(
 	}
 	
 	// For primitive values, convert number to string directly
+	if (variableObject.resolvedType === 'STRING') {
+		return {
+			valueContent: typeof value === 'string' ? `'${value}'` : `'${String(value)}'`,
+			valueType: 'primitive',
+		};
+	}
+	
 	return {
 		valueContent: typeof value === 'number' ? 
 			value.toString() : 
-			typeof value === 'string' ? 
-				value : 
-				JSON.stringify(value),
+			String(value),
 		valueType: 'primitive',
 	};
 }
@@ -254,9 +369,14 @@ function generateDartKeyString(variable: Variable): string {
 		transformedVariableName += capitalizedPart;
 	}
 	// Generate the full path based on the collection and groups
-	const collection = figma.variables
-		.getLocalVariableCollections()
-		.find((collection) => collection.id === variable.variableCollectionId);
+	const collections = figma.variables.getLocalVariableCollections();
+	let collection = null;
+	for (let i = 0; i < collections.length; i++) {
+		if (collections[i].id === variable.variableCollectionId) {
+			collection = collections[i];
+			break;
+		}
+	}
 	if (!collection) return transformedVariableName;
 	const collectionName = toPascalCase(collection.name);
 	const groupPath = parts.slice(0, -1);
@@ -315,7 +435,12 @@ function generateDartCodeForVariable(
 	let doubleKeyPlusSpace = '';
 	let value = valueContent;
 	if (resolvedType === 'STRING') {
-		value = toSingleQuotes(valueContent);
+		// Ensure string values are properly quoted
+		if (valueContent.charAt(0) !== "'" && valueContent.charAt(0) !== '"') {
+			value = `'${valueContent}'`;
+		} else {
+			value = toSingleQuotes(valueContent);
+		}
 	} else if (resolvedType === 'FLOAT') {
 		doubleKeyPlusSpace = 'double ';
 	}

@@ -1,3 +1,5 @@
+import { errorLogger } from './errorLogger';
+
 /**
  * Formats mode name to be used in file names
  */
@@ -28,15 +30,44 @@ export function formatModeNameForVariable(modeName: string): string {
 }
 
 /**
+ * Common Dart reserved words that might appear in design token names
+ */
+const DART_RESERVED_WORDS = [
+	'default', 'class', 'final', 'const', 'static', 'new', 'void', 'null',
+	'true', 'false', 'enum', 'switch', 'case', 'if', 'else', 'for', 'while',
+	'do', 'break', 'continue', 'return', 'try', 'catch', 'throw', 'extends',
+	'implements', 'import', 'export', 'library', 'part', 'abstract', 'async',
+	'await', 'sync', 'yield'
+];
+
+/**
  * Converts a string to camelCase. Adds a prefix 'n' if the string starts with a digit.
+ * Adds a prefix 'token' if the result is a Dart reserved word.
  * @param str - The input string.
  * @returns The camelCase string.
  */
 export function toCamelCase(str: string): string {
-	const convertedStr = removeSpacesAndConcatenate(str)
-		.replace(/[-_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
+	const originalStr = str;
+	
+	// Replace any sequence of non-alphanumeric characters with the capitalized letter that follows
+	const convertedStr = str.trim()
+		.replace(/[^a-zA-Z0-9]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
 		.replace(/^\d/, (chr) => `n${chr}`);
-	const camelCaseStr = convertedStr[0].toLowerCase() + convertedStr.slice(1);
+	
+	// Ensure we have a valid string and make first character lowercase
+	if (!convertedStr) return 'empty';
+	let camelCaseStr = convertedStr[0].toLowerCase() + convertedStr.slice(1);
+	
+	// Check if the result is a Dart reserved word (case-insensitive)
+	if (DART_RESERVED_WORDS.indexOf(camelCaseStr.toLowerCase()) !== -1) {
+		const reservedWordResult = 'token' + camelCaseStr.charAt(0).toUpperCase() + camelCaseStr.slice(1);
+		// Only log if we're in a global context (errorLogger is available)
+		if (typeof errorLogger !== 'undefined') {
+			errorLogger.logReservedWord(originalStr, reservedWordResult);
+		}
+		camelCaseStr = reservedWordResult;
+	}
+	
 	return camelCaseStr;
 }
 
@@ -60,7 +91,7 @@ export function toPascalCase(str: string): string {
  * @returns The converted string with single quotes.
  */
 export function toSingleQuotes(str: string): string {
-	if (str.startsWith('"') && str.endsWith('"') && str.length > 1) {
+	if (str.charAt(0) === '"' && str.charAt(str.length - 1) === '"' && str.length > 1) {
 		return `'${str.slice(1, -1)}'`;
 	}
 	return str;

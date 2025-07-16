@@ -1,13 +1,17 @@
 import { showUI } from '@create-figma-plugin/utilities';
 import { generateVariablesFile, generateVariablesModesFiles, generateVariablesInterfaceFile } from './utils/variablesGenerators';
-import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile } from './utils/stylesGenerators';
+import { generateStylesFile, generateStylesModesFiles, generateStylesInterfaceFile, generatePaintStylesFile, generatePaintStylesInterfaceFile } from './utils/stylesGenerators';
 import { generateUtilsFile } from './utils/utilsGenerators';
+import { errorLogger } from './utils/errorLogger';
 
 export default function () {
   showUI({
     height: 480,
     width: 800,
   });
+
+  /* Clear previous error log */
+  errorLogger.clear();
 
   /* Prepare variables for code generation */
   const variablesFile = generateVariablesFile();
@@ -19,8 +23,16 @@ export default function () {
   const stylesModesFiles = generateStylesModesFiles();
   const stylesInterfaceFile = generateStylesInterfaceFile();
 
+  /* Prepare paint styles for code generation */
+  const paintStylesFile = generatePaintStylesFile();
+  const paintStylesInterfaceFile = generatePaintStylesInterfaceFile();
+
   /* Prepare utils for code generation */
   const utilsFile = generateUtilsFile();
+  
+  /* Get error log */
+  const errorLog = errorLogger.generateLogText();
+  const errorCount = errorLogger.getErrorCount();
   
   /* Sends to the UI the code generation */
   figma.ui.postMessage({
@@ -31,14 +43,22 @@ export default function () {
       stylesFile,
       stylesModesFiles,
       stylesInterfaceFile,
+      paintStylesFile,
+      paintStylesInterfaceFile,
       utilsFile
     },
+    errorLog,
+    errorCount
   });
 
   /* Catches event when code copied to clipboard and notify the user */
   figma.ui.onmessage = (message) => {
     if (message.type === 'code-copied-dart') {
       figma.notify('Dart code successfully copied to clipboard');
+    } else if (message.type === 'files-downloaded') {
+      figma.notify('All Dart files successfully downloaded');
+    } else if (message.type === 'download-error') {
+      figma.notify('Error downloading files. Please try again.');
     } else if (message.type === 'saveSettings') {
       // Save settings to clientStorage
       figma.clientStorage.setAsync('githubUsername', message.username);

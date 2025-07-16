@@ -8,6 +8,8 @@ type GitHubModalProps = {
   highlightedUtilsCode: string;
   highlightedStylesInterfaceCode: string;
   highlightedVariablesInterfaceCode: string;
+  highlightedPaintStylesCode: string;
+  highlightedPaintStylesInterfaceCode: string;
   stylesModesCodes: Record<string, string>;
   variablesModesCodes: Record<string, string>;
 };
@@ -26,6 +28,8 @@ export default function GitHubModal({
   highlightedUtilsCode,
   highlightedStylesInterfaceCode,
   highlightedVariablesInterfaceCode,
+  highlightedPaintStylesCode,
+  highlightedPaintStylesInterfaceCode,
   stylesModesCodes,
   variablesModesCodes
 }: GitHubModalProps) {
@@ -78,6 +82,8 @@ export default function GitHubModal({
 
     const stylesFilePath = `${folderPathField}figma_styles.dart`;
     const stylesInterfaceFilePath = `${folderPathField}figma_styles_interface.dart`;
+    const paintStylesFilePath = `${folderPathField}figma_paint_styles.dart`;
+    const paintStylesInterfaceFilePath = `${folderPathField}figma_paint_styles_interface.dart`;
     const utilsFilePath = `${folderPathField}figma_utils.dart`;
     const variablesFilePath = `${folderPathField}figma_variables.dart`;
     const variablesInterfaceFilePath = `${folderPathField}figma_variables_interface.dart`;
@@ -89,6 +95,9 @@ export default function GitHubModal({
     const commitResultVariablesInterface = await commitFileToGitHub(variablesInterfaceFilePath, highlightedVariablesInterfaceCode, newBranch);
     if (!commitResultVariablesInterface) return;
 
+    const commitResultPaintStylesInterface = await commitFileToGitHub(paintStylesInterfaceFilePath, highlightedPaintStylesInterfaceCode, newBranch);
+    if (!commitResultPaintStylesInterface) return;
+
     // Commit the utils file
     const commitResultUtils = await commitFileToGitHub(utilsFilePath, highlightedUtilsCode, newBranch);
     if (!commitResultUtils) return;
@@ -99,6 +108,9 @@ export default function GitHubModal({
 
     const commitResultStyles = await commitFileToGitHub(stylesFilePath, highlightedStylesCode, newBranch);
     if (!commitResultStyles) return;
+
+    const commitResultPaintStyles = await commitFileToGitHub(paintStylesFilePath, highlightedPaintStylesCode, newBranch);
+    if (!commitResultPaintStyles) return;
 
     // Commit each style mode file
     for (const [modeName, code] of Object.entries(stylesModesCodes)) {
@@ -117,8 +129,8 @@ export default function GitHubModal({
     // Create a pull request
     const pullRequestUrl = `https://api.github.com/repos/${usernameField}/${repositoryField}/pulls`;
 
-    // Update PR body to include interface files
-    const pullRequestBody = `This pull request updates the following files with the latest updates from Figma Variables and Styles:
+    // Update PR body to include paint styles files
+    const pullRequestBody = `This pull request updates the following files with the latest updates from Figma Variables, Styles, and Paint Styles:
 
 - figma_variables_interface.dart (variables interfaces)
 - figma_variables.dart (variables implementation)
@@ -130,6 +142,8 @@ ${Object.keys(variablesModesCodes)
 ${Object.keys(stylesModesCodes)
   .map(mode => `- figma_styles_${mode}.dart (styles for ${mode} mode)`)
   .join('\n')}
+- figma_paint_styles_interface.dart (paint styles interfaces)
+- figma_paint_styles.dart (paint styles implementation)
 - figma_utils.dart (used by the other files)
 
 Created automatically by figma-variables-to-code plugin.`;
@@ -142,7 +156,7 @@ Created automatically by figma-variables-to-code plugin.`;
         Authorization: `token ${tokenField}`,
       },
       body: JSON.stringify({
-        title: `chore: Update Figma Variables and Styles`,
+        title: `chore: Update Figma Variables, Styles, and Paint Styles`,
         head: newBranch,
         base: branchField,
         body: pullRequestBody,
